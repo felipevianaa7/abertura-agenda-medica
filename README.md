@@ -1,5 +1,7 @@
 # Abertura de Agenda Médica — v0.4 integrada
 
+Vercel: https://abertura-agenda-medica.vercel.app/
+
 Esta versão liga o painel React ao n8n e ao Google Sheets operacional.
 
 ## Arquitetura
