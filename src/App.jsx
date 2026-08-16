@@ -18,9 +18,7 @@ import {
   ChevronRight,
   LockKeyhole,
   LoaderCircle,
-  AlertTriangle,,
-  ImageIcon
-} from 'lucide-react'
+  AlertTriangle,} from 'lucide-react'
 
 const unidades = [
   'São Gonçalo',
@@ -754,25 +752,13 @@ function App() {
                                   <MessageSquareText size={15} /> Ver resposta
                                 </button>
                                 {doc.teste ? (
-                                  <>
-                                    <button
-                                      className="evidence-btn"
-                                      onClick={() => downloadEvidence(doc)}
-                                      disabled={evidenceLoadingCd === doc.cd}
-                                    >
-                                      {evidenceLoadingCd === doc.cd
-                                        ? <LoaderCircle size={15} className="spin" />
-                                        : <FileImage size={15} />}
-                                      {evidenceLoadingCd === doc.cd ? 'Gerando...' : 'Evidência'}
-                                    </button>
-                                    <button
-                                      className="outline-btn"
-                                      onClick={() => openPreview(doc)}
-                                      disabled={previewLoading}
-                                    >
-                                      <ImageIcon size={15} /> Selecionar trecho
-                                    </button>
-                                  </>
+                                  <button
+                                    className="evidence-btn"
+                                    onClick={() => openPreview(doc)}
+                                    disabled={previewLoading}
+                                  >
+                                    <FileImage size={15} /> Evidência
+                                  </button>
                                 ) : (
                                   <button className="locked-btn" disabled title="Evidências reais bloqueadas durante a fase de teste">
                                     <LockKeyhole size={15} /> Evidência bloqueada
@@ -840,9 +826,9 @@ function App() {
       {previewDoctor && (
         <Modal onClose={closePreview}>
           <div className="modal-header">
-            <span className="eyebrow">Selecionar trecho da conversa</span>
+            <span className="eyebrow">Evidência da conversa</span>
             <h3>{previewDoctor.nome}</h3>
-            <p>Posicione a conversa e capture exatamente o trecho que deseja usar como evidência.</p>
+            <p>Posicione a conversa no trecho desejado e, quando estiver satisfeito com o enquadramento, baixe a evidência.</p>
           </div>
 
           <div className="preview-shell">
@@ -885,7 +871,7 @@ function App() {
               {previewLoading && previewAction.includes('Capturando')
                 ? <LoaderCircle size={16} className="spin" />
                 : <FileImage size={16} />}
-              Capturar este trecho
+              Baixar evidência
             </button>
           </div>
         </Modal>
