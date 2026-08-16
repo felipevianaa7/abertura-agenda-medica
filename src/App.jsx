@@ -138,7 +138,9 @@ function montarDoctors(medicos, escalas, solicitacoes) {
       cd,
       telefone: m.telefone,
       status: normalizarStatus(sol?.status),
-      ultimoEnvio: sol?.enviado_em || null,
+      ultimoEnvioOriginal: sol?.enviado_em || null,
+      ultimoReenvio: sol?.ultimo_reenvio || '',
+      ultimoEnvio: sol?.ultimo_reenvio || sol?.enviado_em || null,
       respondeuEm: sol?.respondido_em || null,
       respostaRecebida: sol?.resposta_recebida || '',
       idMensagemResposta: sol?.id_mensagem_resposta || '',
@@ -329,7 +331,7 @@ function App() {
   }), [doctors])
 
   const confirmSend = async () => {
-    if (!selectedDoctor?.teste || sending) return
+    if (!selectedDoctor || sending) return
 
     setSending(true)
     setError('')
@@ -360,7 +362,7 @@ function App() {
   }
 
   const downloadEvidence = async (doc) => {
-    if (!doc?.teste || evidenceLoadingCd) return
+    if (!doc || evidenceLoadingCd) return
 
     setEvidenceLoadingCd(doc.cd)
     setError('')
@@ -416,7 +418,7 @@ function App() {
 
 
   const openPreview = async (doc) => {
-    if (!doc?.teste || previewLoading) return
+    if (!doc || previewLoading) return
 
     setPreviewDoctor(doc)
     setPreviewLoading(true)
@@ -544,7 +546,7 @@ function App() {
     setPreviewLoading(false)
     setPreviewAction('')
 
-    if (!doc?.teste) return
+    if (!doc) return
 
     fetch('/api/agenda-preview-fechar', {
       method: 'POST',
@@ -656,7 +658,7 @@ function App() {
             <div className="table-head">
               <div>
                 <h2>Médicos — Niterói</h2>
-                <p>Outubro de 2026 · dados reais do CCNIT + 1 médico de teste</p>
+                <p>Outubro de 2026 · operação liberada para os médicos ativos da unidade</p>
               </div>
               <div className="search-box">
                 <Search size={17} />
@@ -691,14 +693,14 @@ function App() {
                     const groups = agruparEscalas(doc.escalas)
                     const resumo = groups.map(g => g.label.split('-')[0].trim()).join(' / ')
                     return (
-                      <tr key={doc.id} className={doc.teste ? 'test-row' : ''}>
+                      <tr key={doc.id}>
                         <td>
                           <div className="doctor-cell">
                             <div className="avatar">{doc.nome.split(' ').slice(0, 2).map(n => n[0]).join('')}</div>
                             <div>
                               <strong>{doc.nome}</strong>
                               <span>CD {doc.cd}</span>
-                              {doc.teste && <Badge teste />}
+                              
                             </div>
                           </div>
                         </td>
@@ -728,42 +730,28 @@ function App() {
                         </td>
                         <td>
                           <div className="actions">
-                            {doc.status === 'nao_enviado' && doc.teste && (
+                            {doc.status === 'nao_enviado' && (
                               <button className="primary-btn" onClick={() => setSelectedDoctor(doc)}>
                                 <Send size={15} /> Enviar
                               </button>
                             )}
-                            {doc.status === 'nao_enviado' && !doc.teste && (
-                              <button className="locked-btn" disabled title="Envios reais bloqueados durante a fase de teste">
-                                <LockKeyhole size={15} /> Bloqueado
-                              </button>
-                            )}
-                            {doc.status === 'aguardando' && doc.teste && (
+                            {doc.status === 'aguardando' && (
                               <button className="outline-btn" onClick={() => setSelectedDoctor(doc)}>
                                 <RotateCcw size={15} /> Reenviar
                               </button>
-                            )}
-                            {doc.status === 'aguardando' && !doc.teste && (
-                              <button className="locked-btn" disabled><LockKeyhole size={15} /> Bloqueado</button>
                             )}
                             {doc.status === 'respondido' && (
                               <>
                                 <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
                                   <MessageSquareText size={15} /> Ver resposta
                                 </button>
-                                {doc.teste ? (
-                                  <button
-                                    className="evidence-btn"
-                                    onClick={() => openPreview(doc)}
-                                    disabled={previewLoading}
-                                  >
-                                    <FileImage size={15} /> Evidência
-                                  </button>
-                                ) : (
-                                  <button className="locked-btn" disabled title="Evidências reais bloqueadas durante a fase de teste">
-                                    <LockKeyhole size={15} /> Evidência bloqueada
-                                  </button>
-                                )}
+                                <button
+                                  className="evidence-btn"
+                                  onClick={() => openPreview(doc)}
+                                  disabled={previewLoading}
+                                >
+                                  <FileImage size={15} /> Evidência
+                                </button>
                               </>
                             )}
                           </div>
@@ -810,12 +798,12 @@ function App() {
 
           <div className="test-safety-note">
             <LockKeyhole size={16} />
-            <span>Modo de teste ativo: o n8n só autoriza o CD 101010100 e o telefone de teste.</span>
+            <span>Revise médico, telefone, competência e mensagem antes de confirmar o envio.</span>
           </div>
 
           <div className="modal-actions">
             <button className="ghost-btn" onClick={() => setSelectedDoctor(null)} disabled={sending}>Cancelar</button>
-            <button className="primary-btn big" onClick={confirmSend} disabled={sending || !selectedDoctor.teste}>
+            <button className="primary-btn big" onClick={confirmSend} disabled={sending}>
               {sending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
               {sending ? 'Enviando...' : 'Enviar mensagem'}
             </button>
