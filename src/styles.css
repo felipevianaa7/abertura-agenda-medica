@@ -354,3 +354,64 @@ button:disabled { cursor: not-allowed; opacity: .65; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10.5px !important;
 }
+
+
+/* Preview interativo de evidência */
+.preview-shell {
+  margin-top: 18px;
+}
+.preview-stage {
+  position: relative;
+  min-height: 320px;
+  max-height: 58vh;
+  overflow: auto;
+  border: 1px solid #e3e7ed;
+  border-radius: 14px;
+  background: #eef1f4;
+}
+.preview-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.preview-placeholder {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #6f7785;
+  font-weight: 700;
+}
+.preview-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255,255,255,.72);
+  color: #313949;
+  font-weight: 800;
+  backdrop-filter: blur(2px);
+}
+.preview-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.preview-controls button {
+  justify-content: center;
+}
+.preview-actions {
+  justify-content: space-between;
+}
+@media (max-width: 760px) {
+  .preview-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .preview-stage {
+    max-height: 52vh;
+  }
+}

@@ -18,7 +18,8 @@ import {
   ChevronRight,
   LockKeyhole,
   LoaderCircle,
-  AlertTriangle,
+  AlertTriangle,,
+  ImageIcon
 } from 'lucide-react'
 
 const unidades = [
@@ -271,6 +272,10 @@ function App() {
   const [detailsDoctor, setDetailsDoctor] = useState(null)
   const [responseDoctor, setResponseDoctor] = useState(null)
   const [evidenceLoadingCd, setEvidenceLoadingCd] = useState('')
+  const [previewDoctor, setPreviewDoctor] = useState(null)
+  const [previewImage, setPreviewImage] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewAction, setPreviewAction] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -409,6 +414,145 @@ function App() {
     } finally {
       setEvidenceLoadingCd('')
     }
+  }
+
+
+  const openPreview = async (doc) => {
+    if (!doc?.teste || previewLoading) return
+
+    setPreviewDoctor(doc)
+    setPreviewLoading(true)
+    setPreviewAction('Abrindo conversa...')
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await fetch('/api/agenda-preview-iniciar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cd_medico: doc.cd }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data?.ok || !data?.preview_url) {
+        throw new Error(
+          data.mensagem ||
+          data.error ||
+          data.erro ||
+          'Não foi possível abrir o preview.'
+        )
+      }
+
+      setPreviewImage(`${data.preview_url}${data.preview_url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    } catch (err) {
+      setPreviewDoctor(null)
+      setError(err.message || 'Não foi possível abrir o preview.')
+    } finally {
+      setPreviewLoading(false)
+      setPreviewAction('')
+    }
+  }
+
+  const scrollPreview = async (direcao, intensidade) => {
+    if (!previewDoctor || previewLoading) return
+
+    setPreviewLoading(true)
+    setPreviewAction(
+      direcao === 'cima'
+        ? (intensidade === 'longo' ? 'Subindo bastante...' : 'Subindo...')
+        : (intensidade === 'longo' ? 'Descendo bastante...' : 'Descendo...')
+    )
+
+    try {
+      const response = await fetch('/api/agenda-preview-rolar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cd_medico: previewDoctor.cd,
+          direcao,
+          intensidade,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data?.ok || !data?.preview_url) {
+        throw new Error(
+          data.mensagem ||
+          data.error ||
+          data.erro ||
+          'Não foi possível atualizar o preview.'
+        )
+      }
+
+      setPreviewImage(`${data.preview_url}${data.preview_url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    } catch (err) {
+      setError(err.message || 'Não foi possível rolar o preview.')
+    } finally {
+      setPreviewLoading(false)
+      setPreviewAction('')
+    }
+  }
+
+  const capturePreview = async () => {
+    if (!previewDoctor || previewLoading) return
+
+    setPreviewLoading(true)
+    setPreviewAction('Capturando trecho...')
+
+    try {
+      const response = await fetch('/api/agenda-preview-capturar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cd_medico: previewDoctor.cd }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(
+          data.mensagem ||
+          data.error ||
+          data.erro ||
+          'Não foi possível capturar o trecho.'
+        )
+      }
+
+      const blob = await response.blob()
+      if (!blob.size) throw new Error('A captura retornou sem conteúdo.')
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `evidencia-trecho-${previewDoctor.cd}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+
+      setSuccess(`Trecho de ${previewDoctor.nomeCurto} capturado com sucesso.`)
+    } catch (err) {
+      setError(err.message || 'Não foi possível capturar o trecho.')
+    } finally {
+      setPreviewLoading(false)
+      setPreviewAction('')
+    }
+  }
+
+  const closePreview = async () => {
+    const doc = previewDoctor
+    setPreviewDoctor(null)
+    setPreviewImage('')
+    setPreviewLoading(false)
+    setPreviewAction('')
+
+    if (!doc?.teste) return
+
+    fetch('/api/agenda-preview-fechar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cd_medico: doc.cd }),
+    }).catch(() => {})
   }
 
   return (
@@ -610,16 +754,25 @@ function App() {
                                   <MessageSquareText size={15} /> Ver resposta
                                 </button>
                                 {doc.teste ? (
-                                  <button
-                                    className="evidence-btn"
-                                    onClick={() => downloadEvidence(doc)}
-                                    disabled={evidenceLoadingCd === doc.cd}
-                                  >
-                                    {evidenceLoadingCd === doc.cd
-                                      ? <LoaderCircle size={15} className="spin" />
-                                      : <FileImage size={15} />}
-                                    {evidenceLoadingCd === doc.cd ? 'Gerando...' : 'Evidência'}
-                                  </button>
+                                  <>
+                                    <button
+                                      className="evidence-btn"
+                                      onClick={() => downloadEvidence(doc)}
+                                      disabled={evidenceLoadingCd === doc.cd}
+                                    >
+                                      {evidenceLoadingCd === doc.cd
+                                        ? <LoaderCircle size={15} className="spin" />
+                                        : <FileImage size={15} />}
+                                      {evidenceLoadingCd === doc.cd ? 'Gerando...' : 'Evidência'}
+                                    </button>
+                                    <button
+                                      className="outline-btn"
+                                      onClick={() => openPreview(doc)}
+                                      disabled={previewLoading}
+                                    >
+                                      <ImageIcon size={15} /> Selecionar trecho
+                                    </button>
+                                  </>
                                 ) : (
                                   <button className="locked-btn" disabled title="Evidências reais bloqueadas durante a fase de teste">
                                     <LockKeyhole size={15} /> Evidência bloqueada
@@ -679,6 +832,60 @@ function App() {
             <button className="primary-btn big" onClick={confirmSend} disabled={sending || !selectedDoctor.teste}>
               {sending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
               {sending ? 'Enviando...' : 'Enviar mensagem'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {previewDoctor && (
+        <Modal onClose={closePreview}>
+          <div className="modal-header">
+            <span className="eyebrow">Selecionar trecho da conversa</span>
+            <h3>{previewDoctor.nome}</h3>
+            <p>Posicione a conversa e capture exatamente o trecho que deseja usar como evidência.</p>
+          </div>
+
+          <div className="preview-shell">
+            <div className="preview-stage">
+              {previewImage ? (
+                <img src={previewImage} alt={`Preview da conversa de ${previewDoctor.nome}`} />
+              ) : (
+                <div className="preview-placeholder">
+                  <LoaderCircle size={24} className="spin" />
+                  <span>Abrindo conversa...</span>
+                </div>
+              )}
+              {previewLoading && previewImage && (
+                <div className="preview-loading">
+                  <LoaderCircle size={22} className="spin" />
+                  <span>{previewAction || 'Atualizando preview...'}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="preview-controls">
+              <button className="ghost-btn" onClick={() => scrollPreview('cima', 'longo')} disabled={previewLoading}>
+                ↑↑ Subir bastante
+              </button>
+              <button className="ghost-btn" onClick={() => scrollPreview('cima', 'curto')} disabled={previewLoading}>
+                ↑ Subir
+              </button>
+              <button className="ghost-btn" onClick={() => scrollPreview('baixo', 'curto')} disabled={previewLoading}>
+                ↓ Descer
+              </button>
+              <button className="ghost-btn" onClick={() => scrollPreview('baixo', 'longo')} disabled={previewLoading}>
+                ↓↓ Descer bastante
+              </button>
+            </div>
+          </div>
+
+          <div className="modal-actions preview-actions">
+            <button className="ghost-btn" onClick={closePreview} disabled={previewLoading}>Fechar</button>
+            <button className="primary-btn" onClick={capturePreview} disabled={previewLoading || !previewImage}>
+              {previewLoading && previewAction.includes('Capturando')
+                ? <LoaderCircle size={16} className="spin" />
+                : <FileImage size={16} />}
+              Capturar este trecho
             </button>
           </div>
         </Modal>
