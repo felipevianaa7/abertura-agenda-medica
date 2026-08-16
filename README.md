@@ -43,3 +43,12 @@ npm run dev
 - Cadastro inicial de feriados nacionais de 2026.
 - 12/10/2026 é removido automaticamente das segundas-feiras de Outubro.
 - Aviso visual de feriado na tela.
+
+
+## Alterações v0.3
+- Inseridos os 15 médicos reais da aba **Outubro** do arquivo `CCNIT - ESCALAS 2026`.
+- Telefones e CDs médicos cruzados com a aba **Lista Médicos** do arquivo `CCNIT - MAPA DE SALA`.
+- Mantido FELIPE VIANA RIBEIRO como médico de teste.
+- Datas da escala passam a respeitar as datas efetivamente registradas na planilha, inclusive escalas quinzenais.
+- Feriados cadastrados continuam sendo removidos da mensagem antes da prévia/disparo.
+- Subespecialidades de Lucas (Joelho) e Vinicius (Ombro) exibidas no painel.
