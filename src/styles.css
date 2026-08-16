@@ -246,3 +246,50 @@ tbody tr:hover { background: #fbfcfd; }
   text-transform: uppercase;
   letter-spacing: .3px;
 }
+
+/* Integração n8n / modo de teste v0.4 */
+.system-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  background: #ffffff;
+  font-size: 14px;
+}
+.error-alert { border-color: #ef4444; }
+.success-alert { border-color: #22c55e; }
+.table-state {
+  text-align: center;
+  padding: 34px !important;
+  color: #7b8494;
+}
+.table-state svg { vertical-align: middle; margin-right: 8px; }
+.locked-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe4ec;
+  background: #f8fafc;
+  color: #7b8494;
+  border-radius: 8px;
+  padding: 8px 11px;
+  cursor: not-allowed;
+  opacity: .72;
+}
+.test-safety-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 11px 13px;
+  border: 1px dashed #dfe4ec;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #7b8494;
+}
+.spin { animation: agenda-spin 1s linear infinite; }
+@keyframes agenda-spin { to { transform: rotate(360deg); } }
+button:disabled { cursor: not-allowed; opacity: .65; }

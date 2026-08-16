@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CalendarDays,
   CheckCircle2,
@@ -16,6 +16,9 @@ import {
   RotateCcw,
   MessageSquareText,
   ChevronRight,
+  LockKeyhole,
+  LoaderCircle,
+  AlertTriangle,
 } from 'lucide-react'
 
 const unidades = [
@@ -53,257 +56,97 @@ const feriados2026 = [
 const feriadosSet = new Set(feriados2026.map((f) => f.data))
 
 
-const doctorsSeed = [
-  {
-    id: 'teste-felipe',
-    nome: 'FELIPE VIANA RIBEIRO',
-    nomeCurto: 'Dr. Felipe',
-    especialidade: 'GINECOLOGIA',
-    subespecialidade: '',
-    cd: '101010100',
-    telefone: '21984142559',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    teste: true,
-    escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
-    ],
-  },
-  {
-    id: 'andre-hahn',
-    nome: 'ANDRE HAHN MAGARINOS TORRES',
-    nomeCurto: 'Dr. André',
-    especialidade: 'GINECOLOGIA',
-    subespecialidade: '',
-    cd: '493446970',
-    telefone: '21981577711',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30', datas: ['06/10','13/10','20/10','27/10'] },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30', datas: ['01/10','08/10','15/10','22/10','29/10'] },
-    ],
-  },
-  {
-    id: 'bruno',
-    nome: 'BRUNO GARRETT BENTO',
-    nomeCurto: 'Dr. Bruno',
-    especialidade: 'NEUROCIRURGIA',
-    subespecialidade: '',
-    cd: '509666746',
-    telefone: '21996154370',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'NEUROCIRURGIA', inicio: '13:00', fim: '17:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
-    ],
-  },
-  {
-    id: 'diana',
-    nome: 'DIANA GUIMARAES DE SALES MATHEUS',
-    nomeCurto: 'Dra. Diana',
-    especialidade: 'GERIATRIA',
-    subespecialidade: '',
-    cd: '429017559',
-    telefone: '21964067244',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GERIATRIA', inicio: '08:00', fim: '17:00', almoco: null, datas: ['06/10','13/10','20/10','27/10'] },
-    ],
-  },
-  {
-    id: 'diego',
-    nome: 'DIEGO PEDROSO SOARES DE QUEIROZ',
-    nomeCurto: 'Dr. Diego',
-    especialidade: 'CARDIOLOGIA',
-    subespecialidade: '',
-    cd: '268127622',
-    telefone: '21991122581',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'CARDIOLOGIA', inicio: '13:00', fim: '17:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
-    ],
-  },
-  {
-    id: 'eduardo',
-    nome: 'EDUARDO NEVES DE OLIVEIRA',
-    nomeCurto: 'Dr. Eduardo',
-    especialidade: 'GASTROENTEROLOGIA',
-    subespecialidade: '',
-    cd: '256471498',
-    telefone: '21975296641',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00', almoco: '12:00 às 12:30', datas: ['05/10','12/10','19/10','26/10'] },
-    ],
-  },
-  {
-    id: 'emanuel',
-    nome: 'EMANUEL DECNOP MARTINS JUNIOR',
-    nomeCurto: 'Dr. Emanuel',
-    especialidade: 'OBSTETRICIA',
-    subespecialidade: '',
-    cd: '510237497',
-    telefone: '21998117768',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'OBSTETRICIA', inicio: '08:00', fim: '17:00', almoco: '12:30 às 13:00', datas: ['02/10','09/10','16/10','23/10','30/10'] },
-    ],
-  },
-  {
-    id: 'fernanda',
-    nome: 'FERNANDA FERREIRA DA SILVA VILA NOVA',
-    nomeCurto: 'Dra. Fernanda',
-    especialidade: 'GINECOLOGIA / OBSTETRÍCIA',
-    subespecialidade: '',
-    cd: '256484883',
-    telefone: '21981691391',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    complexa: true,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '18:00', almoco: null, datas: ['13/10','27/10'], obs: 'Quinzenal' },
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '18:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '16:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '08:00', fim: '12:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '16:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '16:00', fim: '18:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
-    ],
-  },
-  {
-    id: 'fernando',
-    nome: 'FERNANDO MARCIO DE ABREU AZEVEDO',
-    nomeCurto: 'Dr. Fernando',
-    especialidade: 'PEDIATRIA',
-    subespecialidade: '',
-    cd: '412693181',
-    telefone: '21998538526',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'PEDIATRIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 13:00', datas: ['07/10','14/10','21/10','28/10'] },
-    ],
-  },
-  {
-    id: 'geisilaine',
-    nome: 'GEISILAINE DA ROCHA BRANCO DE BRITO',
-    nomeCurto: 'Dra. Geisilaine',
-    especialidade: 'DERMATOLOGIA',
-    subespecialidade: '',
-    cd: '256480489',
-    telefone: '21984706030',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'DERMATOLOGIA', inicio: '08:00', fim: '17:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
-    ],
-  },
-  {
-    id: 'lucas',
-    nome: 'LUCAS EMANUEL DE OLIVEIRA MORAES VASQUES',
-    nomeCurto: 'Dr. Lucas',
-    especialidade: 'ORTOPEDIA',
-    subespecialidade: 'JOELHO',
-    cd: '256461280',
-    telefone: '21997188157',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'ORTOPEDIA - JOELHO', inicio: '08:00', fim: '12:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
-    ],
-  },
-  {
-    id: 'marcelo',
-    nome: 'MARCELO FLAVIO GOMES JARDIM FILHO',
-    nomeCurto: 'Dr. Marcelo',
-    especialidade: 'CARDIOLOGIA',
-    subespecialidade: '',
-    cd: '256464491',
-    telefone: '21988083735',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'CARDIOLOGIA', inicio: '08:00', fim: '18:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
-    ],
-  },
-  {
-    id: 'maria-clara',
-    nome: 'MARIA CLARA MEDEIROS CRUZ DE LIMA MARTINS',
-    nomeCurto: 'Dra. Maria Clara',
-    especialidade: 'CLINICO GERAL',
-    subespecialidade: '',
-    cd: '256463401',
-    telefone: '21980370679',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'CLINICO GERAL', inicio: '08:00', fim: '18:00', almoco: '12:40 às 13:00', datas: ['06/10','13/10','20/10','27/10'] },
-    ],
-  },
-  {
-    id: 'naira',
-    nome: 'NAIRA VANESSA ANOMAL GONZALEZ',
-    nomeCurto: 'Dra. Naira',
-    especialidade: 'PEDIATRIA',
-    subespecialidade: '',
-    cd: '256461689',
-    telefone: '21981462493',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'PEDIATRIA', inicio: '08:00', fim: '13:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
-    ],
-  },
-  {
-    id: 'neoclebio',
-    nome: 'NEOCLEBIO DOS SANTOS SANCHES',
-    nomeCurto: 'Dr. Neoclebio',
-    especialidade: 'GASTROENTEROLOGIA',
-    subespecialidade: '',
-    cd: '263494473',
-    telefone: '21981242458',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00', almoco: '12:30 às 13:00', datas: ['06/10','20/10'], obs: 'Quinzenal' },
-    ],
-  },
-  {
-    id: 'vinicius',
-    nome: 'VINICIUS SANTOS LIMA',
-    nomeCurto: 'Dr. Vinicius',
-    especialidade: 'ORTOPEDIA',
-    subespecialidade: 'OMBRO',
-    cd: '263497944',
-    telefone: '21979435645',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'ORTOPEDIA - OMBRO', inicio: '13:00', fim: '17:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
-    ],
-  },
-]
+const nomesCurtos = {
+  '101010100': 'Dr. Felipe',
+  '493446970': 'Dr. André',
+  '509666746': 'Dr. Bruno',
+  '429017559': 'Dra. Diana',
+  '268127622': 'Dr. Diego',
+  '256471498': 'Dr. Eduardo',
+  '510237497': 'Dr. Emanuel',
+  '256484883': 'Dra. Fernanda',
+  '412693181': 'Dr. Fernando',
+  '256480489': 'Dra. Geisilaine',
+  '256461280': 'Dr. Lucas',
+  '256464491': 'Dr. Marcelo',
+  '256463401': 'Dra. Maria Clara',
+  '256461689': 'Dra. Naira',
+  '263494473': 'Dr. Neoclebio',
+  '263497944': 'Dr. Vinicius',
+}
 
+const weekdayMap = {
+  'Segunda': 1,
+  'Terça': 2,
+  'Quarta': 3,
+  'Quinta': 4,
+  'Sexta': 5,
+  'Sábado': 6,
+  'Domingo': 0,
+}
+
+const weekdayLabel = {
+  'Segunda': 'SEGUNDA-FEIRA',
+  'Terça': 'TERÇA-FEIRA',
+  'Quarta': 'QUARTA-FEIRA',
+  'Quinta': 'QUINTA-FEIRA',
+  'Sexta': 'SEXTA-FEIRA',
+  'Sábado': 'SÁBADO',
+  'Domingo': 'DOMINGO',
+}
+
+function normalizarStatus(status = '') {
+  const s = String(status).trim().toLowerCase()
+  if (s === 'aguardando resposta') return 'aguardando'
+  if (s === 'respondido') return 'respondido'
+  return 'nao_enviado'
+}
+
+function separarDatas(valor = '') {
+  return String(valor)
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+}
+
+function montarDoctors(medicos, escalas, solicitacoes) {
+  const solicitacaoPorCd = new Map(
+    solicitacoes.map((s) => [String(s.cd_medico), s])
+  )
+
+  return medicos.map((m) => {
+    const cd = String(m.cd_medico)
+    const esc = escalas
+      .filter((e) => String(e.cd_medico) === cd)
+      .map((e) => ({
+        dia: weekdayMap[e.dia_semana] ?? 0,
+        label: weekdayLabel[e.dia_semana] ?? String(e.dia_semana || '').toUpperCase(),
+        especialidade: e.especialidade || m.especialidade,
+        inicio: e.inicio,
+        fim: e.fim,
+        almoco: !e.almoco || /sem almoço|não tem/i.test(e.almoco) ? null : e.almoco,
+        datas: separarDatas(e.datas_solicitar),
+        obs: e.observacao || '',
+      }))
+
+    const sol = solicitacaoPorCd.get(cd)
+    return {
+      id: cd,
+      nome: m.nome,
+      nomeCurto: nomesCurtos[cd] || `Dr(a). ${String(m.nome || '').split(' ')[0]}`,
+      especialidade: m.especialidade,
+      subespecialidade: m.subespecialidade || '',
+      cd,
+      telefone: m.telefone,
+      status: normalizarStatus(sol?.status),
+      ultimoEnvio: sol?.enviado_em || null,
+      respondeuEm: sol?.respondido_em || null,
+      teste: String(m.tipo || '').toLowerCase() === 'teste',
+      complexa: esc.length > 2 || new Set(esc.map(e => e.dia)).size < esc.length,
+      escalas: esc,
+    }
+  })
+}
 
 function diasDoMesPorSemana(ano, mesIndex, weekday) {
   const dias = []
@@ -418,11 +261,49 @@ function Modal({ children, onClose, wide = false }) {
 }
 
 function App() {
-  const [doctors, setDoctors] = useState(doctorsSeed)
+  const [doctors, setDoctors] = useState([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [detailsDoctor, setDetailsDoctor] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const refreshData = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [medRes, escRes, solRes] = await Promise.all([
+        fetch('/api/agenda-medicos'),
+        fetch('/api/agenda-escalas?unidade=Niter%C3%B3i&competencia=2026-10'),
+        fetch('/api/agenda-solicitacoes?unidade=Niter%C3%B3i&competencia=2026-10'),
+      ])
+
+      if (!medRes.ok || !escRes.ok || !solRes.ok) {
+        throw new Error('Não foi possível carregar os dados do n8n.')
+      }
+
+      const [medData, escData, solData] = await Promise.all([
+        medRes.json(), escRes.json(), solRes.json(),
+      ])
+
+      setDoctors(montarDoctors(
+        medData.medicos || [],
+        escData.escalas || [],
+        solData.solicitacoes || [],
+      ))
+    } catch (err) {
+      setError(err.message || 'Falha ao carregar os dados.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshData()
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -439,18 +320,35 @@ function App() {
     respondidos: doctors.filter(d => d.status === 'respondido').length,
   }), [doctors])
 
-  const confirmSend = () => {
-    const now = new Date()
-    const stamp = now.toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-    setDoctors((prev) => prev.map((d) =>
-      d.id === selectedDoctor.id
-        ? { ...d, status: 'aguardando', ultimoEnvio: stamp }
-        : d
-    ))
-    setSelectedDoctor(null)
+  const confirmSend = async () => {
+    if (!selectedDoctor?.teste || sending) return
+
+    setSending(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await fetch('/api/agenda-enviar-teste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cd_medico: selectedDoctor.cd,
+          competencia: '2026-10',
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.mensagem || data.error || data.erro || 'Falha ao enviar a mensagem.')
+      }
+
+      setSuccess(`Mensagem enviada para ${selectedDoctor.nomeCurto}.`)
+      setSelectedDoctor(null)
+      await refreshData()
+    } catch (err) {
+      setError(err.message || 'Não foi possível enviar a mensagem.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -476,7 +374,7 @@ function App() {
         {sidebarOpen && (
           <div className="sidebar-foot">
             <span>Protótipo</span>
-            <strong>v0.1</strong>
+            <strong>v0.4</strong>
           </div>
         )}
       </aside>
@@ -490,10 +388,16 @@ function App() {
             <h1>Abertura de Agenda Médica</h1>
             <p>Controle de solicitações, respostas e evidências</p>
           </div>
-          <button className="secondary-btn"><RefreshCw size={16} /> Atualizar dados</button>
+          <button className="secondary-btn" onClick={refreshData} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''} /> Atualizar dados</button>
         </header>
 
         <section className="content">
+          {error && (
+            <div className="system-alert error-alert"><AlertTriangle size={18} /><span>{error}</span></div>
+          )}
+          {success && (
+            <div className="system-alert success-alert"><CheckCircle2 size={18} /><span>{success}</span></div>
+          )}
           <div className="filters-card">
             <div className="field">
               <label>Unidade</label>
@@ -575,7 +479,13 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((doc) => {
+                  {loading && (
+                    <tr><td colSpan="6" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando dados do Google Sheets...</td></tr>
+                  )}
+                  {!loading && filtered.length === 0 && (
+                    <tr><td colSpan="6" className="table-state">Nenhum médico encontrado.</td></tr>
+                  )}
+                  {!loading && filtered.map((doc) => {
                     const groups = agruparEscalas(doc.escalas)
                     const resumo = groups.map(g => g.label.split('-')[0].trim()).join(' / ')
                     return (
@@ -616,15 +526,23 @@ function App() {
                         </td>
                         <td>
                           <div className="actions">
-                            {doc.status === 'nao_enviado' && (
+                            {doc.status === 'nao_enviado' && doc.teste && (
                               <button className="primary-btn" onClick={() => setSelectedDoctor(doc)}>
                                 <Send size={15} /> Enviar
                               </button>
                             )}
-                            {doc.status === 'aguardando' && (
+                            {doc.status === 'nao_enviado' && !doc.teste && (
+                              <button className="locked-btn" disabled title="Envios reais bloqueados durante a fase de teste">
+                                <LockKeyhole size={15} /> Bloqueado
+                              </button>
+                            )}
+                            {doc.status === 'aguardando' && doc.teste && (
                               <button className="outline-btn" onClick={() => setSelectedDoctor(doc)}>
                                 <RotateCcw size={15} /> Reenviar
                               </button>
+                            )}
+                            {doc.status === 'aguardando' && !doc.teste && (
+                              <button className="locked-btn" disabled><LockKeyhole size={15} /> Bloqueado</button>
                             )}
                             {doc.status === 'respondido' && (
                               <>
@@ -674,9 +592,17 @@ function App() {
             </div>
           </div>
 
+          <div className="test-safety-note">
+            <LockKeyhole size={16} />
+            <span>Modo de teste ativo: o n8n só autoriza o CD 101010100 e o telefone de teste.</span>
+          </div>
+
           <div className="modal-actions">
-            <button className="ghost-btn" onClick={() => setSelectedDoctor(null)}>Cancelar</button>
-            <button className="primary-btn big" onClick={confirmSend}><Send size={16} /> Enviar mensagem</button>
+            <button className="ghost-btn" onClick={() => setSelectedDoctor(null)} disabled={sending}>Cancelar</button>
+            <button className="primary-btn big" onClick={confirmSend} disabled={sending || !selectedDoctor.teste}>
+              {sending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
+              {sending ? 'Enviando...' : 'Enviar mensagem'}
+            </button>
           </div>
         </Modal>
       )}
