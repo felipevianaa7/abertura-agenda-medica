@@ -18,7 +18,17 @@ import {
   ChevronRight,
   LockKeyhole,
   LoaderCircle,
-  AlertTriangle,} from 'lucide-react'
+  AlertTriangle,
+  Activity,
+  BarChart3,
+  ClipboardCheck,
+  Database,
+  Phone,
+  ShieldCheck,
+  Wifi,
+  CircleOff,
+  UserRoundCheck,
+} from 'lucide-react'
 
 const unidades = [
   'São Gonçalo',
@@ -266,6 +276,7 @@ function Modal({ children, onClose, wide = false }) {
 
 function App() {
   const [doctors, setDoctors] = useState([])
+  const [activePage, setActivePage] = useState('abertura')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [query, setQuery] = useState('')
   const [selectedDoctor, setSelectedDoctor] = useState(null)
@@ -280,6 +291,7 @@ function App() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [lastSync, setLastSync] = useState(null)
 
   const refreshData = async () => {
     setLoading(true)
@@ -304,6 +316,7 @@ function App() {
         escData.escalas || [],
         solData.solicitacoes || [],
       ))
+      setLastSync(new Date())
     } catch (err) {
       setError(err.message || 'Falha ao carregar os dados.')
     } finally {
@@ -555,6 +568,527 @@ function App() {
     }).catch(() => {})
   }
 
+
+  const respondedDoctors = useMemo(
+    () => doctors.filter(d => d.status === 'respondido'),
+    [doctors]
+  )
+
+  const waitingDoctors = useMemo(
+    () => doctors.filter(d => d.status === 'aguardando'),
+    [doctors]
+  )
+
+  const specialtySummary = useMemo(() => {
+    const map = new Map()
+    doctors.forEach((d) => {
+      const key = d.especialidade || 'SEM ESPECIALIDADE'
+      const atual = map.get(key) || { total: 0, enviados: 0, respondidos: 0 }
+      atual.total += 1
+      if (d.status !== 'nao_enviado') atual.enviados += 1
+      if (d.status === 'respondido') atual.respondidos += 1
+      map.set(key, atual)
+    })
+    return Array.from(map.entries())
+      .map(([especialidade, dados]) => ({ especialidade, ...dados }))
+      .sort((a, b) => b.total - a.total || a.especialidade.localeCompare(b.especialidade))
+  }, [doctors])
+
+  const responseRate = counters.enviados
+    ? Math.round((counters.respondidos / counters.enviados) * 100)
+    : 0
+
+  const pageMeta = {
+    dashboard: {
+      title: 'Dashboard',
+      subtitle: 'Visão geral do ciclo de abertura de agendas',
+    },
+    abertura: {
+      title: 'Abertura de Agenda Médica',
+      subtitle: 'Controle de solicitações, respostas e evidências',
+    },
+    respondidos: {
+      title: 'Respondidos',
+      subtitle: 'Conferência das respostas recebidas e evidências',
+    },
+    medicos: {
+      title: 'Médicos',
+      subtitle: 'Cadastro operacional e escalas da unidade',
+    },
+    configuracoes: {
+      title: 'Configurações',
+      subtitle: 'Parâmetros e saúde das integrações do painel',
+    },
+  }
+
+  const renderMetrics = () => (
+    <div className="metrics">
+      <div className="metric-card">
+        <div className="metric-icon"><Users size={20} /></div>
+        <div><span>Total de médicos</span><strong>{counters.total}</strong></div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-icon"><Send size={20} /></div>
+        <div><span>Enviados</span><strong>{counters.enviados}</strong></div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-icon"><Clock3 size={20} /></div>
+        <div><span>Aguardando</span><strong>{counters.aguardando}</strong></div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-icon"><CheckCircle2 size={20} /></div>
+        <div><span>Respondidos</span><strong>{counters.respondidos}</strong></div>
+      </div>
+    </div>
+  )
+
+  const renderDashboard = () => (
+    <>
+      {renderMetrics()}
+
+      <div className="dashboard-grid">
+        <section className="insight-card response-rate-card">
+          <div className="insight-card-head">
+            <div>
+              <span className="eyebrow-inline">Indicador</span>
+              <h2>Taxa de resposta</h2>
+            </div>
+            <div className="insight-icon"><BarChart3 size={20} /></div>
+          </div>
+          <div className="big-rate">{responseRate}%</div>
+          <div className="progress-track">
+            <div className="progress-bar" style={{ width: `${responseRate}%` }} />
+          </div>
+          <p>{counters.respondidos} de {counters.enviados} solicitações enviadas já foram respondidas.</p>
+        </section>
+
+        <section className="insight-card">
+          <div className="insight-card-head">
+            <div>
+              <span className="eyebrow-inline">Operação</span>
+              <h2>Próxima ação</h2>
+            </div>
+            <div className="insight-icon"><Activity size={20} /></div>
+          </div>
+          {waitingDoctors.length ? (
+            <>
+              <strong className="action-number">{waitingDoctors.length}</strong>
+              <p>médico(s) aguardando resposta. Use a tela Abertura de Agenda para acompanhar ou reenviar.</p>
+              <button className="outline-btn" onClick={() => setActivePage('abertura')}>
+                Ir para abertura <ChevronRight size={15} />
+              </button>
+            </>
+          ) : counters.enviados === counters.total && counters.total > 0 ? (
+            <>
+              <div className="good-state"><CheckCircle2 size={24} /> Ciclo sem pendências de resposta.</div>
+              <p>Todos os médicos enviados já retornaram.</p>
+            </>
+          ) : (
+            <>
+              <strong className="action-number">{counters.total - counters.enviados}</strong>
+              <p>médico(s) ainda não receberam a solicitação desta competência.</p>
+              <button className="outline-btn" onClick={() => setActivePage('abertura')}>
+                Iniciar envios <ChevronRight size={15} />
+              </button>
+            </>
+          )}
+        </section>
+      </div>
+
+      <section className="table-card">
+        <div className="table-head">
+          <div>
+            <h2>Resumo por especialidade</h2>
+            <p>Distribuição dos médicos e andamento das solicitações em Outubro/2026.</p>
+          </div>
+        </div>
+        <div className="table-wrap">
+          <table className="compact-table">
+            <thead>
+              <tr>
+                <th>Especialidade</th>
+                <th>Médicos</th>
+                <th>Enviados</th>
+                <th>Respondidos</th>
+                <th>Retorno</th>
+              </tr>
+            </thead>
+            <tbody>
+              {specialtySummary.map((item) => {
+                const rate = item.enviados ? Math.round(item.respondidos / item.enviados * 100) : 0
+                return (
+                  <tr key={item.especialidade}>
+                    <td><strong>{item.especialidade}</strong></td>
+                    <td>{item.total}</td>
+                    <td>{item.enviados}</td>
+                    <td>{item.respondidos}</td>
+                    <td><span className="mini-rate">{rate}%</span></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  )
+
+  const renderRespondidos = () => (
+    <section className="table-card standalone-card">
+      <div className="table-head">
+        <div>
+          <h2>Respostas recebidas — Niterói</h2>
+          <p>Fila de conferência das respostas registradas para Outubro/2026.</p>
+        </div>
+        <div className="page-count">
+          <MessageSquareText size={16} />
+          {respondedDoctors.length} respondido(s)
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Médico</th>
+              <th>Especialidade</th>
+              <th>Respondido em</th>
+              <th>Resposta</th>
+              <th className="th-actions">Conferência</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr><td colSpan="5" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando respostas...</td></tr>
+            )}
+            {!loading && respondedDoctors.length === 0 && (
+              <tr>
+                <td colSpan="5">
+                  <div className="empty-state">
+                    <MessageSquareText size={28} />
+                    <strong>Nenhuma resposta registrada ainda</strong>
+                    <span>As respostas aparecerão aqui automaticamente quando chegarem pelo WhatsApp.</span>
+                  </div>
+                </td>
+              </tr>
+            )}
+            {!loading && respondedDoctors.map((doc) => (
+              <tr key={doc.cd}>
+                <td>
+                  <div className="doctor-cell">
+                    <div className="avatar">{doc.nome.split(' ').slice(0,2).map(n => n[0]).join('')}</div>
+                    <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
+                  </div>
+                </td>
+                <td>{doc.especialidade}</td>
+                <td>{doc.respondeuEm || '—'}</td>
+                <td>
+                  <div className="response-snippet">
+                    {doc.respostaRecebida || 'Resposta registrada sem texto.'}
+                  </div>
+                </td>
+                <td>
+                  <div className="actions">
+                    <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
+                      <MessageSquareText size={15} /> Ver resposta
+                    </button>
+                    <button className="evidence-btn" onClick={() => openPreview(doc)} disabled={previewLoading}>
+                      <FileImage size={15} /> Evidência
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+
+  const renderMedicos = () => (
+    <section className="table-card standalone-card">
+      <div className="table-head">
+        <div>
+          <h2>Cadastro operacional — Niterói</h2>
+          <p>Dados usados pelo sistema para envio, identificação e montagem das escalas.</p>
+        </div>
+        <div className="search-box">
+          <Search size={17} />
+          <input
+            placeholder="Buscar médico, especialidade ou CD..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Médico</th>
+              <th>Especialidade</th>
+              <th>Telefone</th>
+              <th>Escala cadastrada</th>
+              <th>Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr><td colSpan="5" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando médicos...</td></tr>
+            )}
+            {!loading && filtered.map((doc) => {
+              const groups = agruparEscalas(doc.escalas)
+              return (
+                <tr key={doc.cd}>
+                  <td>
+                    <div className="doctor-cell">
+                      <div className="avatar">{doc.nome.split(' ').slice(0,2).map(n => n[0]).join('')}</div>
+                      <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="specialty-cell">
+                      <span>{doc.especialidade}</span>
+                      {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
+                    </div>
+                  </td>
+                  <td><span className="phone-cell"><Phone size={14} /> {doc.telefone}</span></td>
+                  <td>
+                    {groups.length ? (
+                      <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>
+                        {groups.map(g => g.label.split('-')[0]).join(' / ')}
+                        <ChevronRight size={15} />
+                      </button>
+                    ) : <span className="badge badge-warn">Sem escala</span>}
+                  </td>
+                  <td>
+                    <span className="status-line"><UserRoundCheck size={15} /> Ativo</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="info-strip">
+        <Database size={16} />
+        <span>Cadastro e alterações continuam sendo administrados na aba <strong>Medicos</strong> da planilha operacional nesta RC.</span>
+      </div>
+    </section>
+  )
+
+  const renderConfiguracoes = () => (
+    <div className="settings-grid">
+      <section className="settings-card">
+        <div className="settings-card-title">
+          <div className="settings-icon"><Settings size={19} /></div>
+          <div><h2>Operação atual</h2><p>Parâmetros utilizados nesta versão.</p></div>
+        </div>
+        <div className="settings-list">
+          <div><span>Unidade</span><strong>Niterói</strong></div>
+          <div><span>Competência</span><strong>Outubro/2026</strong></div>
+          <div><span>Fuso horário</span><strong>America/Sao_Paulo</strong></div>
+          <div><span>Feriados</span><strong>Remoção automática das datas cadastradas</strong></div>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card-title">
+          <div className="settings-icon"><Wifi size={19} /></div>
+          <div><h2>Integrações</h2><p>Estado observado pelo painel.</p></div>
+        </div>
+        <div className="integration-list">
+          <div className="integration-row">
+            <span><Database size={16} /> Google Sheets via n8n</span>
+            <strong className={lastSync ? 'integration-ok' : 'integration-off'}>
+              {lastSync ? <><ShieldCheck size={15} /> Conectado</> : <><CircleOff size={15} /> Sem leitura</>}
+            </strong>
+          </div>
+          <div className="integration-row">
+            <span><MessageSquareText size={16} /> WhatsApp / Evolution</span>
+            <strong className="integration-neutral">Validado no envio</strong>
+          </div>
+          <div className="integration-row">
+            <span><FileImage size={16} /> Serviço de evidência</span>
+            <strong className="integration-neutral">Sob demanda</strong>
+          </div>
+        </div>
+        <button className="outline-btn settings-refresh" onClick={refreshData} disabled={loading}>
+          <RefreshCw size={15} className={loading ? 'spin' : ''} />
+          Testar leitura dos dados
+        </button>
+        {lastSync && (
+          <span className="last-sync">Última leitura bem-sucedida: {lastSync.toLocaleString('pt-BR')}</span>
+        )}
+      </section>
+
+      <section className="settings-card settings-wide">
+        <div className="settings-card-title">
+          <div className="settings-icon"><ClipboardCheck size={19} /></div>
+          <div><h2>Modelo operacional da mensagem</h2><p>A prévia final continua sendo montada médico a médico a partir da escala.</p></div>
+        </div>
+        <div className="message-template">
+          <strong>Estrutura atual</strong>
+          <p>Saudação → competência → solicitação da unidade → dias/horários da escala → alerta de feriados/férias → pedido de retorno.</p>
+        </div>
+        <div className="info-strip no-margin">
+          <ShieldCheck size={16} />
+          <span>Nesta RC, configurações críticas permanecem controladas pelo n8n e pela planilha para evitar alterações acidentais em produção.</span>
+        </div>
+      </section>
+    </div>
+  )
+
+  const renderAbertura = () => (
+    <>
+      <div className="filters-card">
+        <div className="field">
+          <label>Unidade</label>
+          <select defaultValue="Niterói">
+            {unidades.map((u) => (
+              <option key={u} value={u} disabled={u !== 'Niterói'}>{u}</option>
+            ))}
+          </select>
+          <span className="field-help">Demais unidades estarão disponíveis em versões futuras.</span>
+        </div>
+        <div className="field">
+          <label>Mês</label>
+          <select defaultValue="Outubro">
+            {meses.map((m) => (
+              <option key={m} value={m} disabled={m !== 'Outubro'}>{m}</option>
+            ))}
+          </select>
+          <span className="field-help">Base piloto: Outubro/2026.</span>
+        </div>
+        <div className="field year-field">
+          <label>Ano</label>
+          <input value="2026" readOnly />
+        </div>
+      </div>
+
+      <div className="holiday-notice">
+        <CalendarDays size={17} />
+        <div>
+          <strong>Feriado em Outubro/2026:</strong>
+          <span>12/10 — Nossa Senhora Aparecida. A data é removida automaticamente das opções de atendimento.</span>
+        </div>
+      </div>
+
+      {renderMetrics()}
+
+      <section className="table-card">
+        <div className="table-head">
+          <div>
+            <h2>Médicos — Niterói</h2>
+            <p>Outubro de 2026 · operação liberada para os médicos ativos da unidade</p>
+          </div>
+          <div className="search-box">
+            <Search size={17} />
+            <input
+              placeholder="Buscar médico, especialidade ou CD..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Médico</th>
+                <th>Especialidade</th>
+                <th>Escala</th>
+                <th>Status</th>
+                <th>Último envio</th>
+                <th className="th-actions">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan="6" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando dados do Google Sheets...</td></tr>
+              )}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan="6" className="table-state">Nenhum médico encontrado.</td></tr>
+              )}
+              {!loading && filtered.map((doc) => {
+                const groups = agruparEscalas(doc.escalas)
+                const resumo = groups.map(g => g.label.split('-')[0].trim()).join(' / ')
+                return (
+                  <tr key={doc.id}>
+                    <td>
+                      <div className="doctor-cell">
+                        <div className="avatar">{doc.nome.split(' ').slice(0, 2).map(n => n[0]).join('')}</div>
+                        <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="specialty-cell">
+                        <span>{doc.especialidade}</span>
+                        {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
+                      </div>
+                    </td>
+                    <td>
+                      {doc.complexa ? (
+                        <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>
+                          Ver detalhes <ChevronRight size={15} />
+                        </button>
+                      ) : (
+                        <span className="schedule-summary">{resumo}</span>
+                      )}
+                    </td>
+                    <td><Badge status={doc.status} /></td>
+                    <td>
+                      {doc.ultimoEnvio ? (
+                        <div className="date-cell">
+                          <strong>{doc.ultimoEnvio.split(' ')[0]}</strong>
+                          <span>{doc.ultimoEnvio.split(' ')[1] || ''}</span>
+                        </div>
+                      ) : <span className="muted">—</span>}
+                    </td>
+                    <td>
+                      <div className="actions">
+                        {doc.status === 'nao_enviado' && (
+                          <button className="primary-btn" onClick={() => setSelectedDoctor(doc)}>
+                            <Send size={15} /> Enviar
+                          </button>
+                        )}
+                        {doc.status === 'aguardando' && (
+                          <button className="outline-btn" onClick={() => setSelectedDoctor(doc)}>
+                            <RotateCcw size={15} /> Reenviar
+                          </button>
+                        )}
+                        {doc.status === 'respondido' && (
+                          <>
+                            <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
+                              <MessageSquareText size={15} /> Ver resposta
+                            </button>
+                            <button className="evidence-btn" onClick={() => openPreview(doc)} disabled={previewLoading}>
+                              <FileImage size={15} /> Evidência
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  )
+
+  const renderCurrentPage = () => {
+    if (activePage === 'dashboard') return renderDashboard()
+    if (activePage === 'respondidos') return renderRespondidos()
+    if (activePage === 'medicos') return renderMedicos()
+    if (activePage === 'configuracoes') return renderConfiguracoes()
+    return renderAbertura()
+  }
+
   return (
     <div className="app">
       <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
@@ -568,17 +1102,27 @@ function App() {
         </div>
 
         <nav>
-          <button className="nav-item"><LayoutDashboard size={18} />{sidebarOpen && 'Dashboard'}</button>
-          <button className="nav-item active"><CalendarDays size={18} />{sidebarOpen && 'Abertura de Agenda'}</button>
-          <button className="nav-item"><MessageSquareText size={18} />{sidebarOpen && 'Respondidos'}</button>
-          <button className="nav-item"><Users size={18} />{sidebarOpen && 'Médicos'}</button>
-          <button className="nav-item"><Settings size={18} />{sidebarOpen && 'Configurações'}</button>
+          <button className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePage('dashboard')}>
+            <LayoutDashboard size={18} />{sidebarOpen && 'Dashboard'}
+          </button>
+          <button className={`nav-item ${activePage === 'abertura' ? 'active' : ''}`} onClick={() => setActivePage('abertura')}>
+            <CalendarDays size={18} />{sidebarOpen && 'Abertura de Agenda'}
+          </button>
+          <button className={`nav-item ${activePage === 'respondidos' ? 'active' : ''}`} onClick={() => setActivePage('respondidos')}>
+            <MessageSquareText size={18} />{sidebarOpen && 'Respondidos'}
+          </button>
+          <button className={`nav-item ${activePage === 'medicos' ? 'active' : ''}`} onClick={() => setActivePage('medicos')}>
+            <Users size={18} />{sidebarOpen && 'Médicos'}
+          </button>
+          <button className={`nav-item ${activePage === 'configuracoes' ? 'active' : ''}`} onClick={() => setActivePage('configuracoes')}>
+            <Settings size={18} />{sidebarOpen && 'Configurações'}
+          </button>
         </nav>
 
         {sidebarOpen && (
           <div className="sidebar-foot">
-            <span>Protótipo</span>
-            <strong>v0.4</strong>
+            <span>RC</span>
+            <strong>v0.7</strong>
           </div>
         )}
       </aside>
@@ -589,8 +1133,8 @@ function App() {
             <Menu size={20} />
           </button>
           <div className="topbar-title">
-            <h1>Abertura de Agenda Médica</h1>
-            <p>Controle de solicitações, respostas e evidências</p>
+            <h1>{pageMeta[activePage].title}</h1>
+            <p>{pageMeta[activePage].subtitle}</p>
           </div>
           <button className="secondary-btn" onClick={refreshData} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''} /> Atualizar dados</button>
         </header>
@@ -602,167 +1146,7 @@ function App() {
           {success && (
             <div className="system-alert success-alert"><CheckCircle2 size={18} /><span>{success}</span></div>
           )}
-          <div className="filters-card">
-            <div className="field">
-              <label>Unidade</label>
-              <select defaultValue="Niterói">
-                {unidades.map((u) => (
-                  <option key={u} value={u} disabled={u !== 'Niterói'}>{u}</option>
-                ))}
-              </select>
-              <span className="field-help">Demais unidades estarão disponíveis em versões futuras.</span>
-            </div>
-            <div className="field">
-              <label>Mês</label>
-              <select defaultValue="Outubro">
-                {meses.map((m) => (
-                  <option key={m} value={m} disabled={m !== 'Outubro'}>{m}</option>
-                ))}
-              </select>
-              <span className="field-help">Base piloto: Outubro/2026.</span>
-            </div>
-            <div className="field year-field">
-              <label>Ano</label>
-              <input value="2026" readOnly />
-            </div>
-          </div>
-
-          <div className="holiday-notice">
-            <CalendarDays size={17} />
-            <div>
-              <strong>Feriado em Outubro/2026:</strong>
-              <span>12/10 — Nossa Senhora Aparecida. A data é removida automaticamente das opções de atendimento.</span>
-            </div>
-          </div>
-
-          <div className="metrics">
-            <div className="metric-card">
-              <div className="metric-icon"><Users size={20} /></div>
-              <div><span>Total de médicos</span><strong>{counters.total}</strong></div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-icon"><Send size={20} /></div>
-              <div><span>Enviados</span><strong>{counters.enviados}</strong></div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-icon"><Clock3 size={20} /></div>
-              <div><span>Aguardando</span><strong>{counters.aguardando}</strong></div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-icon"><CheckCircle2 size={20} /></div>
-              <div><span>Respondidos</span><strong>{counters.respondidos}</strong></div>
-            </div>
-          </div>
-
-          <section className="table-card">
-            <div className="table-head">
-              <div>
-                <h2>Médicos — Niterói</h2>
-                <p>Outubro de 2026 · operação liberada para os médicos ativos da unidade</p>
-              </div>
-              <div className="search-box">
-                <Search size={17} />
-                <input
-                  placeholder="Buscar médico, especialidade ou CD..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Médico</th>
-                    <th>Especialidade</th>
-                    <th>Escala</th>
-                    <th>Status</th>
-                    <th>Último envio</th>
-                    <th className="th-actions">Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
-                    <tr><td colSpan="6" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando dados do Google Sheets...</td></tr>
-                  )}
-                  {!loading && filtered.length === 0 && (
-                    <tr><td colSpan="6" className="table-state">Nenhum médico encontrado.</td></tr>
-                  )}
-                  {!loading && filtered.map((doc) => {
-                    const groups = agruparEscalas(doc.escalas)
-                    const resumo = groups.map(g => g.label.split('-')[0].trim()).join(' / ')
-                    return (
-                      <tr key={doc.id}>
-                        <td>
-                          <div className="doctor-cell">
-                            <div className="avatar">{doc.nome.split(' ').slice(0, 2).map(n => n[0]).join('')}</div>
-                            <div>
-                              <strong>{doc.nome}</strong>
-                              <span>CD {doc.cd}</span>
-                              
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="specialty-cell">
-                            <span>{doc.especialidade}</span>
-                            {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
-                          </div>
-                        </td>
-                        <td>
-                          {doc.complexa ? (
-                            <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>
-                              Ver detalhes <ChevronRight size={15} />
-                            </button>
-                          ) : (
-                            <span className="schedule-summary">{resumo}</span>
-                          )}
-                        </td>
-                        <td><Badge status={doc.status} /></td>
-                        <td>
-                          {doc.ultimoEnvio ? (
-                            <div className="date-cell">
-                              <strong>{doc.ultimoEnvio.split(' ')[0]}</strong>
-                              <span>{doc.ultimoEnvio.split(' ')[1] || ''}</span>
-                            </div>
-                          ) : <span className="muted">—</span>}
-                        </td>
-                        <td>
-                          <div className="actions">
-                            {doc.status === 'nao_enviado' && (
-                              <button className="primary-btn" onClick={() => setSelectedDoctor(doc)}>
-                                <Send size={15} /> Enviar
-                              </button>
-                            )}
-                            {doc.status === 'aguardando' && (
-                              <button className="outline-btn" onClick={() => setSelectedDoctor(doc)}>
-                                <RotateCcw size={15} /> Reenviar
-                              </button>
-                            )}
-                            {doc.status === 'respondido' && (
-                              <>
-                                <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
-                                  <MessageSquareText size={15} /> Ver resposta
-                                </button>
-                                <button
-                                  className="evidence-btn"
-                                  onClick={() => openPreview(doc)}
-                                  disabled={previewLoading}
-                                >
-                                  <FileImage size={15} /> Evidência
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          {renderCurrentPage()}
         </section>
       </main>
 
