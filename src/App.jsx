@@ -141,6 +141,9 @@ function montarDoctors(medicos, escalas, solicitacoes) {
       status: normalizarStatus(sol?.status),
       ultimoEnvio: sol?.enviado_em || null,
       respondeuEm: sol?.respondido_em || null,
+      respostaRecebida: sol?.resposta_recebida || '',
+      idMensagemResposta: sol?.id_mensagem_resposta || '',
+      evidenciaGerada: sol?.evidencia_gerada || '',
       teste: String(m.tipo || '').toLowerCase() === 'teste',
       complexa: esc.length > 2 || new Set(esc.map(e => e.dia)).size < esc.length,
       escalas: esc,
@@ -266,6 +269,8 @@ function App() {
   const [query, setQuery] = useState('')
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [detailsDoctor, setDetailsDoctor] = useState(null)
+  const [responseDoctor, setResponseDoctor] = useState(null)
+  const [evidenceLoadingCd, setEvidenceLoadingCd] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -348,6 +353,61 @@ function App() {
       setError(err.message || 'Não foi possível enviar a mensagem.')
     } finally {
       setSending(false)
+    }
+  }
+
+  const downloadEvidence = async (doc) => {
+    if (!doc?.teste || evidenceLoadingCd) return
+
+    setEvidenceLoadingCd(doc.cd)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await fetch('/api/agenda-evidencia-teste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cd_medico: doc.cd }),
+      })
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || ''
+        let detail = {}
+
+        if (contentType.includes('application/json')) {
+          detail = await response.json().catch(() => ({}))
+        } else {
+          const text = await response.text().catch(() => '')
+          detail = { mensagem: text }
+        }
+
+        throw new Error(
+          detail.mensagem ||
+          detail.error ||
+          detail.erro ||
+          'Não foi possível gerar a evidência.'
+        )
+      }
+
+      const blob = await response.blob()
+      if (!blob.size) {
+        throw new Error('A evidência foi gerada sem conteúdo.')
+      }
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `evidencia-whatsapp-${doc.cd}-2026-10.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+
+      setSuccess(`Evidência de ${doc.nomeCurto} gerada com sucesso.`)
+    } catch (err) {
+      setError(err.message || 'Não foi possível obter a evidência.')
+    } finally {
+      setEvidenceLoadingCd('')
     }
   }
 
@@ -546,8 +606,25 @@ function App() {
                             )}
                             {doc.status === 'respondido' && (
                               <>
-                                <button className="outline-btn"><MessageSquareText size={15} /> Ver resposta</button>
-                                <button className="evidence-btn"><FileImage size={15} /> Evidência</button>
+                                <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
+                                  <MessageSquareText size={15} /> Ver resposta
+                                </button>
+                                {doc.teste ? (
+                                  <button
+                                    className="evidence-btn"
+                                    onClick={() => downloadEvidence(doc)}
+                                    disabled={evidenceLoadingCd === doc.cd}
+                                  >
+                                    {evidenceLoadingCd === doc.cd
+                                      ? <LoaderCircle size={15} className="spin" />
+                                      : <FileImage size={15} />}
+                                    {evidenceLoadingCd === doc.cd ? 'Gerando...' : 'Evidência'}
+                                  </button>
+                                ) : (
+                                  <button className="locked-btn" disabled title="Evidências reais bloqueadas durante a fase de teste">
+                                    <LockKeyhole size={15} /> Evidência bloqueada
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -603,6 +680,45 @@ function App() {
               {sending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
               {sending ? 'Enviando...' : 'Enviar mensagem'}
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {responseDoctor && (
+        <Modal onClose={() => setResponseDoctor(null)}>
+          <div className="modal-header">
+            <span className="eyebrow">Resposta recebida</span>
+            <h3>{responseDoctor.nome}</h3>
+            <p>{responseDoctor.especialidade} · CD {responseDoctor.cd}</p>
+          </div>
+
+          <div className="response-card">
+            <div className="response-message">
+              <MessageSquareText size={18} />
+              <div>
+                <span>Mensagem do médico</span>
+                <p>{responseDoctor.respostaRecebida || 'Resposta registrada sem texto.'}</p>
+              </div>
+            </div>
+
+            <div className="response-meta">
+              <div>
+                <span>Respondido em</span>
+                <strong>{responseDoctor.respondeuEm || '—'}</strong>
+              </div>
+              <div>
+                <span>ID da mensagem</span>
+                <strong className="message-id">{responseDoctor.idMensagemResposta || '—'}</strong>
+              </div>
+              <div>
+                <span>Evidência</span>
+                <strong>{responseDoctor.evidenciaGerada || 'Não'}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button className="ghost-btn" onClick={() => setResponseDoctor(null)}>Fechar</button>
           </div>
         </Modal>
       )}
