@@ -52,12 +52,14 @@ const feriados2026 = [
 // O filtro abaixo já impede que um feriado cadastrado seja oferecido automaticamente ao médico.
 const feriadosSet = new Set(feriados2026.map((f) => f.data))
 
+
 const doctorsSeed = [
   {
     id: 'teste-felipe',
     nome: 'FELIPE VIANA RIBEIRO',
     nomeCurto: 'Dr. Felipe',
     especialidade: 'GINECOLOGIA',
+    subespecialidade: '',
     cd: '101010100',
     telefone: '21984142559',
     status: 'nao_enviado',
@@ -65,7 +67,7 @@ const doctorsSeed = [
     respondeuEm: null,
     teste: true,
     escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: null },
+      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
     ],
   },
   {
@@ -73,28 +75,15 @@ const doctorsSeed = [
     nome: 'ANDRE HAHN MAGARINOS TORRES',
     nomeCurto: 'Dr. André',
     especialidade: 'GINECOLOGIA',
+    subespecialidade: '',
     cd: '493446970',
     telefone: '21981577711',
     status: 'nao_enviado',
     ultimoEnvio: null,
     respondeuEm: null,
     escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30' },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30' },
-    ],
-  },
-  {
-    id: 'diana',
-    nome: 'DIANA GUIMARAES DE SALES MATHEUS',
-    nomeCurto: 'Dra. Diana',
-    especialidade: 'GERIATRIA',
-    cd: '429017559',
-    telefone: '21964067244',
-    status: 'nao_enviado',
-    ultimoEnvio: null,
-    respondeuEm: null,
-    escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GERIATRIA', inicio: '08:00', fim: '17:00', almoco: null },
+      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30', datas: ['06/10','13/10','20/10','27/10'] },
+      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 12:30', datas: ['01/10','08/10','15/10','22/10','29/10'] },
     ],
   },
   {
@@ -102,13 +91,29 @@ const doctorsSeed = [
     nome: 'BRUNO GARRETT BENTO',
     nomeCurto: 'Dr. Bruno',
     especialidade: 'NEUROCIRURGIA',
+    subespecialidade: '',
     cd: '509666746',
     telefone: '21996154370',
     status: 'nao_enviado',
     ultimoEnvio: null,
     respondeuEm: null,
     escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'NEUROCIRURGIA', inicio: '13:00', fim: '17:00', almoco: null },
+      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'NEUROCIRURGIA', inicio: '13:00', fim: '17:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
+    ],
+  },
+  {
+    id: 'diana',
+    nome: 'DIANA GUIMARAES DE SALES MATHEUS',
+    nomeCurto: 'Dra. Diana',
+    especialidade: 'GERIATRIA',
+    subespecialidade: '',
+    cd: '429017559',
+    telefone: '21964067244',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GERIATRIA', inicio: '08:00', fim: '17:00', almoco: null, datas: ['06/10','13/10','20/10','27/10'] },
     ],
   },
   {
@@ -116,33 +121,14 @@ const doctorsSeed = [
     nome: 'DIEGO PEDROSO SOARES DE QUEIROZ',
     nomeCurto: 'Dr. Diego',
     especialidade: 'CARDIOLOGIA',
+    subespecialidade: '',
     cd: '268127622',
     telefone: '21991122581',
-    status: 'aguardando',
-    ultimoEnvio: '15/08/2026 14:20',
-    respondeuEm: null,
-    escalas: [
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'CARDIOLOGIA', inicio: '13:00', fim: '17:00', almoco: null },
-    ],
-  },
-  {
-    id: 'fernanda',
-    nome: 'FERNANDA FERREIRA DA SILVA VILA NOVA',
-    nomeCurto: 'Dra. Fernanda',
-    especialidade: 'GINECOLOGIA / OBSTETRÍCIA',
-    cd: '256484883',
-    telefone: '21981691391',
     status: 'nao_enviado',
     ultimoEnvio: null,
     respondeuEm: null,
-    complexa: true,
     escalas: [
-      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '18:00', obs: 'Quinzenal' },
-      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '18:00' },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '08:30', fim: '12:00' },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '16:00' },
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '16:00' },
-      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '16:00', fim: '18:00' },
+      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'CARDIOLOGIA', inicio: '13:00', fim: '17:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
     ],
   },
   {
@@ -150,17 +136,174 @@ const doctorsSeed = [
     nome: 'EDUARDO NEVES DE OLIVEIRA',
     nomeCurto: 'Dr. Eduardo',
     especialidade: 'GASTROENTEROLOGIA',
+    subespecialidade: '',
     cd: '256471498',
     telefone: '21975296641',
-    status: 'respondido',
-    ultimoEnvio: '15/08/2026 09:42',
-    respondeuEm: '15/08/2026 11:18',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
     escalas: [
-      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00' },
-      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00', obs: 'Quinzenal' },
+      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00', almoco: '12:00 às 12:30', datas: ['05/10','12/10','19/10','26/10'] },
+    ],
+  },
+  {
+    id: 'emanuel',
+    nome: 'EMANUEL DECNOP MARTINS JUNIOR',
+    nomeCurto: 'Dr. Emanuel',
+    especialidade: 'OBSTETRICIA',
+    subespecialidade: '',
+    cd: '510237497',
+    telefone: '21998117768',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'OBSTETRICIA', inicio: '08:00', fim: '17:00', almoco: '12:30 às 13:00', datas: ['02/10','09/10','16/10','23/10','30/10'] },
+    ],
+  },
+  {
+    id: 'fernanda',
+    nome: 'FERNANDA FERREIRA DA SILVA VILA NOVA',
+    nomeCurto: 'Dra. Fernanda',
+    especialidade: 'GINECOLOGIA / OBSTETRÍCIA',
+    subespecialidade: '',
+    cd: '256484883',
+    telefone: '21981691391',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    complexa: true,
+    escalas: [
+      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '18:00', almoco: null, datas: ['13/10','27/10'], obs: 'Quinzenal' },
+      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '18:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
+      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '12:00', fim: '16:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
+      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '08:00', fim: '12:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
+      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'GINECOLOGIA', inicio: '08:30', fim: '16:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
+      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'OBSTETRÍCIA', inicio: '16:00', fim: '18:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
+    ],
+  },
+  {
+    id: 'fernando',
+    nome: 'FERNANDO MARCIO DE ABREU AZEVEDO',
+    nomeCurto: 'Dr. Fernando',
+    especialidade: 'PEDIATRIA',
+    subespecialidade: '',
+    cd: '412693181',
+    telefone: '21998538526',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'PEDIATRIA', inicio: '08:00', fim: '18:00', almoco: '12:00 às 13:00', datas: ['07/10','14/10','21/10','28/10'] },
+    ],
+  },
+  {
+    id: 'geisilaine',
+    nome: 'GEISILAINE DA ROCHA BRANCO DE BRITO',
+    nomeCurto: 'Dra. Geisilaine',
+    especialidade: 'DERMATOLOGIA',
+    subespecialidade: '',
+    cd: '256480489',
+    telefone: '21984706030',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 3, label: 'QUARTA-FEIRA', especialidade: 'DERMATOLOGIA', inicio: '08:00', fim: '17:00', almoco: null, datas: ['07/10','14/10','21/10','28/10'] },
+    ],
+  },
+  {
+    id: 'lucas',
+    nome: 'LUCAS EMANUEL DE OLIVEIRA MORAES VASQUES',
+    nomeCurto: 'Dr. Lucas',
+    especialidade: 'ORTOPEDIA',
+    subespecialidade: 'JOELHO',
+    cd: '256461280',
+    telefone: '21997188157',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'ORTOPEDIA - JOELHO', inicio: '08:00', fim: '12:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
+    ],
+  },
+  {
+    id: 'marcelo',
+    nome: 'MARCELO FLAVIO GOMES JARDIM FILHO',
+    nomeCurto: 'Dr. Marcelo',
+    especialidade: 'CARDIOLOGIA',
+    subespecialidade: '',
+    cd: '256464491',
+    telefone: '21988083735',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 5, label: 'SEXTA-FEIRA', especialidade: 'CARDIOLOGIA', inicio: '08:00', fim: '18:00', almoco: null, datas: ['02/10','09/10','16/10','23/10','30/10'] },
+    ],
+  },
+  {
+    id: 'maria-clara',
+    nome: 'MARIA CLARA MEDEIROS CRUZ DE LIMA MARTINS',
+    nomeCurto: 'Dra. Maria Clara',
+    especialidade: 'CLINICO GERAL',
+    subespecialidade: '',
+    cd: '256463401',
+    telefone: '21980370679',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'CLINICO GERAL', inicio: '08:00', fim: '18:00', almoco: '12:40 às 13:00', datas: ['06/10','13/10','20/10','27/10'] },
+    ],
+  },
+  {
+    id: 'naira',
+    nome: 'NAIRA VANESSA ANOMAL GONZALEZ',
+    nomeCurto: 'Dra. Naira',
+    especialidade: 'PEDIATRIA',
+    subespecialidade: '',
+    cd: '256461689',
+    telefone: '21981462493',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 1, label: 'SEGUNDA-FEIRA', especialidade: 'PEDIATRIA', inicio: '08:00', fim: '13:00', almoco: null, datas: ['05/10','12/10','19/10','26/10'] },
+    ],
+  },
+  {
+    id: 'neoclebio',
+    nome: 'NEOCLEBIO DOS SANTOS SANCHES',
+    nomeCurto: 'Dr. Neoclebio',
+    especialidade: 'GASTROENTEROLOGIA',
+    subespecialidade: '',
+    cd: '263494473',
+    telefone: '21981242458',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 2, label: 'TERÇA-FEIRA', especialidade: 'GASTROENTEROLOGIA', inicio: '08:00', fim: '17:00', almoco: '12:30 às 13:00', datas: ['06/10','20/10'], obs: 'Quinzenal' },
+    ],
+  },
+  {
+    id: 'vinicius',
+    nome: 'VINICIUS SANTOS LIMA',
+    nomeCurto: 'Dr. Vinicius',
+    especialidade: 'ORTOPEDIA',
+    subespecialidade: 'OMBRO',
+    cd: '263497944',
+    telefone: '21979435645',
+    status: 'nao_enviado',
+    ultimoEnvio: null,
+    respondeuEm: null,
+    escalas: [
+      { dia: 4, label: 'QUINTA-FEIRA', especialidade: 'ORTOPEDIA - OMBRO', inicio: '13:00', fim: '17:00', almoco: null, datas: ['01/10','08/10','15/10','22/10','29/10'] },
     ],
   },
 ]
+
 
 function diasDoMesPorSemana(ano, mesIndex, weekday) {
   const dias = []
@@ -187,6 +330,15 @@ function diasDoMesPorSemana(ano, mesIndex, weekday) {
   return dias
 }
 
+
+function filtrarFeriadosDasDatas(datas = []) {
+  return datas.filter((data) => {
+    const [dia, mes] = data.split('/')
+    const iso = `2026-${mes}-${dia}`
+    return !feriadosSet.has(iso)
+  })
+}
+
 function formatHour(h) {
   return h.replace(':00', ':00h').replace(':30', ':30h')
 }
@@ -205,9 +357,12 @@ function gerarMensagem(medico) {
   const grupos = agruparEscalas(medico.escalas)
 
   const blocos = grupos.map((grupo) => {
-    const datas = diasDoMesPorSemana(2026, 9, grupo.dia).join(', ')
-
     const linhas = grupo.itens.map((e) => {
+      const datasOrigem = Array.isArray(e.datas) && e.datas.length
+        ? e.datas
+        : diasDoMesPorSemana(2026, 9, grupo.dia)
+
+      const datas = filtrarFeriadosDasDatas(datasOrigem).join(', ')
       const especialidade =
         medico.complexa || grupo.itens.length > 1
           ? `${e.especialidade}\n`
@@ -395,7 +550,7 @@ function App() {
             <div className="table-head">
               <div>
                 <h2>Médicos — Niterói</h2>
-                <p>Outubro de 2026</p>
+                <p>Outubro de 2026 · dados reais do CCNIT + 1 médico de teste</p>
               </div>
               <div className="search-box">
                 <Search size={17} />
@@ -435,7 +590,12 @@ function App() {
                             </div>
                           </div>
                         </td>
-                        <td>{doc.especialidade}</td>
+                        <td>
+                          <div className="specialty-cell">
+                            <span>{doc.especialidade}</span>
+                            {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
+                          </div>
+                        </td>
                         <td>
                           {doc.complexa ? (
                             <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>

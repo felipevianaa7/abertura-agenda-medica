@@ -233,3 +233,16 @@ tbody tr:hover { background: #fbfcfd; }
   color: #727c8d !important;
   font-size: 11px !important;
 }
+
+
+.specialty-cell span {
+  display: block;
+}
+.specialty-cell small {
+  display: block;
+  color: #8a93a2;
+  font-size: 10.5px;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
