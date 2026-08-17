@@ -5,7 +5,7 @@ export async function GET(request) {
   const arquivo = String(url.searchParams.get('arquivo') || '').trim()
 
   // Trava específica do preview de teste.
-  if (!/^preview-5521984142559-\d+\.png$/.test(arquivo)) {
+  if (!/^preview-\d{12,13}-\d+\.png$/.test(arquivo)) {
     return Response.json({
       ok: false,
       erro: 'ARQUIVO_PREVIEW_INVALIDO',
