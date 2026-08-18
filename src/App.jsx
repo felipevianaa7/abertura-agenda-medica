@@ -1,1325 +1,371 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  FileImage,
-  LayoutDashboard,
-  Menu,
-  RefreshCw,
-  Search,
-  Send,
-  Settings,
-  Stethoscope,
-  Users,
-  X,
-  RotateCcw,
-  MessageSquareText,
-  ChevronRight,
-  LockKeyhole,
-  LoaderCircle,
-  AlertTriangle,
-  Activity,
-  BarChart3,
-  ClipboardCheck,
-  Database,
-  Phone,
-  ShieldCheck,
-  Wifi,
-  CircleOff,
-  UserRoundCheck,
+  LayoutDashboard, CalendarDays, MessageSquareText, Users, Settings, Menu,
+  Search, Send, RotateCcw, FileImage, RefreshCw, ChevronRight, CheckCircle2,
+  Clock3, Database, Stethoscope, Plus, Pencil, UserX, Save, X, LockKeyhole,
+  CalendarPlus, AlertTriangle, LoaderCircle, Phone, BarChart3
 } from 'lucide-react'
 
-const unidades = [
-  'São Gonçalo',
-  'Niterói',
-  'Cidade Nova',
-  'Duque de Caxias',
-  'Jacarepaguá',
-  'Madureira',
-  'Campo Grande',
-  'Nova Iguaçu',
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const UNIDADE_PADRAO = 'Niterói'
+const COMPETENCIA_INICIAL = '2026-10'
+
+const FERIADOS = [
+  { data:'2026-10-12', nome:'Nossa Senhora Aparecida', tipo:'Nacional' },
+  { data:'2026-11-02', nome:'Finados', tipo:'Nacional' },
+  { data:'2026-11-15', nome:'Proclamação da República', tipo:'Nacional' },
+  { data:'2026-11-20', nome:'Dia Nacional de Zumbi e da Consciência Negra', tipo:'Nacional' },
+  { data:'2026-12-25', nome:'Natal', tipo:'Nacional' },
+  { data:'2027-01-01', nome:'Confraternização Universal', tipo:'Nacional' },
+  { data:'2027-04-21', nome:'Tiradentes', tipo:'Nacional' },
+  { data:'2027-05-01', nome:'Dia Mundial do Trabalho', tipo:'Nacional' },
+  { data:'2027-09-07', nome:'Independência do Brasil', tipo:'Nacional' },
+  { data:'2027-10-12', nome:'Nossa Senhora Aparecida', tipo:'Nacional' },
+  { data:'2027-11-02', nome:'Finados', tipo:'Nacional' },
+  { data:'2027-11-15', nome:'Proclamação da República', tipo:'Nacional' },
+  { data:'2027-11-20', nome:'Dia Nacional de Zumbi e da Consciência Negra', tipo:'Nacional' },
+  { data:'2027-12-25', nome:'Natal', tipo:'Nacional' },
 ]
 
-const meses = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-]
+const WEEKDAY = { Domingo:0, Segunda:1, Terça:2, Quarta:3, Quinta:4, Sexta:5, Sábado:6 }
+const WEEKDAY_LABEL = ['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO']
 
-
-const feriados2026 = [
-  { data: '2026-01-01', nome: 'Confraternização Universal', tipo: 'nacional' },
-  { data: '2026-04-03', nome: 'Paixão de Cristo', tipo: 'nacional' },
-  { data: '2026-04-21', nome: 'Tiradentes', tipo: 'nacional' },
-  { data: '2026-05-01', nome: 'Dia Mundial do Trabalho', tipo: 'nacional' },
-  { data: '2026-09-07', nome: 'Independência do Brasil', tipo: 'nacional' },
-  { data: '2026-10-12', nome: 'Nossa Senhora Aparecida', tipo: 'nacional' },
-  { data: '2026-11-02', nome: 'Finados', tipo: 'nacional' },
-  { data: '2026-11-15', nome: 'Proclamação da República', tipo: 'nacional' },
-  { data: '2026-11-20', nome: 'Dia Nacional de Zumbi e da Consciência Negra', tipo: 'nacional' },
-  { data: '2026-12-25', nome: 'Natal', tipo: 'nacional' },
-]
-
-// Futuramente podemos acrescentar feriados estaduais, municipais e fechamentos internos.
-// O filtro abaixo já impede que um feriado cadastrado seja oferecido automaticamente ao médico.
-const feriadosSet = new Set(feriados2026.map((f) => f.data))
-
-
-const nomesCurtos = {
-  '101010100': 'Dr. Felipe',
-  '493446970': 'Dr. André',
-  '509666746': 'Dr. Bruno',
-  '429017559': 'Dra. Diana',
-  '268127622': 'Dr. Diego',
-  '256471498': 'Dr. Eduardo',
-  '510237497': 'Dr. Emanuel',
-  '256484883': 'Dra. Fernanda',
-  '412693181': 'Dr. Fernando',
-  '256480489': 'Dra. Geisilaine',
-  '256461280': 'Dr. Lucas',
-  '256464491': 'Dr. Marcelo',
-  '256463401': 'Dra. Maria Clara',
-  '256461689': 'Dra. Naira',
-  '263494473': 'Dr. Neoclebio',
-  '263497944': 'Dr. Vinicius',
+function competenciaLabel(c) {
+  if (!c || !/^\d{4}-\d{2}$/.test(c)) return c || '—'
+  const [a,m] = c.split('-').map(Number)
+  return `${MESES[m-1]}/${a}`
 }
-
-const weekdayMap = {
-  'Segunda': 1,
-  'Terça': 2,
-  'Quarta': 3,
-  'Quinta': 4,
-  'Sexta': 5,
-  'Sábado': 6,
-  'Domingo': 0,
+function addMonths(comp, qtd) {
+  const [a,m] = comp.split('-').map(Number)
+  const d = new Date(a, m-1+qtd, 1)
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
 }
-
-const weekdayLabel = {
-  'Segunda': 'SEGUNDA-FEIRA',
-  'Terça': 'TERÇA-FEIRA',
-  'Quarta': 'QUARTA-FEIRA',
-  'Quinta': 'QUINTA-FEIRA',
-  'Sexta': 'SEXTA-FEIRA',
-  'Sábado': 'SÁBADO',
-  'Domingo': 'DOMINGO',
-}
-
-function normalizarStatus(status = '') {
-  const s = String(status).trim().toLowerCase()
-  if (s === 'aguardando resposta') return 'aguardando'
-  if (s === 'respondido') return 'respondido'
+function normalizarStatus(s='') {
+  const v = String(s).trim().toLowerCase()
+  if (v === 'respondido') return 'respondido'
+  if (v === 'aguardando resposta' || v === 'aguardando') return 'aguardando'
   return 'nao_enviado'
 }
-
-function separarDatas(valor = '') {
-  return String(valor)
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean)
+function separarDatas(v='') { return String(v).split(',').map(x=>x.trim()).filter(Boolean) }
+function isoToBR(iso) {
+  const [a,m,d] = iso.split('-')
+  return `${d}/${m}/${a}`
+}
+function feriadosDaCompetencia(comp) {
+  return FERIADOS.filter(f => f.data.startsWith(comp+'-'))
+}
+function datasPorDiaSemana(comp, diaSemana) {
+  const [ano, mes] = comp.split('-').map(Number)
+  const weekday = WEEKDAY[diaSemana]
+  const out = []
+  const feriados = new Set(FERIADOS.map(f=>f.data))
+  for (let d=1; d<=31; d++) {
+    const date = new Date(ano, mes-1, d)
+    if (date.getMonth() !== mes-1) break
+    const iso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    if (date.getDay() === weekday && !feriados.has(iso)) out.push(`${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}`)
+  }
+  return out
+}
+function calcularLiberacao(competencias) {
+  const agora = new Date()
+  const atual = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`
+  const alvoAtual = addMonths(atual, 2)
+  const liberado = agora.getDate() >= 15
+  if (liberado && !competencias.includes(alvoAtual)) {
+    return { competencia: alvoAtual, liberado:true, data:`15/${String(agora.getMonth()+1).padStart(2,'0')}/${agora.getFullYear()}` }
+  }
+  const proximoMes = addMonths(atual, 1)
+  const competencia = addMonths(proximoMes, 2)
+  const [a,m] = proximoMes.split('-')
+  return { competencia, liberado:false, data:`15/${m}/${a}` }
 }
 
 function montarDoctors(medicos, escalas, solicitacoes) {
-  const solicitacaoPorCd = new Map(
-    solicitacoes.map((s) => [String(s.cd_medico), s])
-  )
-
-  return medicos.map((m) => {
-    const cd = String(m.cd_medico)
-    const esc = escalas
-      .filter((e) => String(e.cd_medico) === cd)
-      .map((e) => ({
-        dia: weekdayMap[e.dia_semana] ?? 0,
-        label: weekdayLabel[e.dia_semana] ?? String(e.dia_semana || '').toUpperCase(),
-        especialidade: e.especialidade || m.especialidade,
-        inicio: e.inicio,
-        fim: e.fim,
-        almoco: !e.almoco || /sem almoço|não tem/i.test(e.almoco) ? null : e.almoco,
-        datas: separarDatas(e.datas_solicitar),
-        obs: e.observacao || '',
+  const solMap = new Map(solicitacoes.map(s=>[String(s.cd_medico),s]))
+  return medicos
+    .filter(m => String(m.ativo||'Sim').toLowerCase() === 'sim')
+    .map(m => {
+      const cd = String(m.cd_medico)
+      const esc = escalas.filter(e=>String(e.cd_medico)===cd).map(e=>({
+        dia_semana:e.dia_semana, especialidade:e.especialidade||m.especialidade,
+        inicio:e.inicio, fim:e.fim, almoco:e.almoco, datas:separarDatas(e.datas_solicitar),
+        observacao:e.observacao||''
       }))
-
-    const sol = solicitacaoPorCd.get(cd)
-    return {
-      id: cd,
-      nome: m.nome,
-      nomeCurto: nomesCurtos[cd] || `Dr(a). ${String(m.nome || '').split(' ')[0]}`,
-      especialidade: m.especialidade,
-      subespecialidade: m.subespecialidade || '',
-      cd,
-      telefone: m.telefone,
-      status: normalizarStatus(sol?.status),
-      ultimoEnvioOriginal: sol?.enviado_em || null,
-      ultimoReenvio: sol?.ultimo_reenvio || '',
-      ultimoEnvio: sol?.ultimo_reenvio || sol?.enviado_em || null,
-      respondeuEm: sol?.respondido_em || null,
-      respostaRecebida: sol?.resposta_recebida || '',
-      idMensagemResposta: sol?.id_mensagem_resposta || '',
-      evidenciaGerada: sol?.evidencia_gerada || '',
-      teste: String(m.tipo || '').toLowerCase() === 'teste',
-      complexa: esc.length > 2 || new Set(esc.map(e => e.dia)).size < esc.length,
-      escalas: esc,
-    }
-  })
-}
-
-function diasDoMesPorSemana(ano, mesIndex, weekday) {
-  const dias = []
-  const date = new Date(ano, mesIndex, 1)
-
-  while (date.getMonth() === mesIndex) {
-    if (date.getDay() === weekday) {
-      const iso = [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getDate()).padStart(2, '0'),
-      ].join('-')
-
-      if (!feriadosSet.has(iso)) {
-        dias.push(
-          String(date.getDate()).padStart(2, '0') +
-          '/' +
-          String(mesIndex + 1).padStart(2, '0')
-        )
+      const s = solMap.get(cd) || {}
+      return {
+        ...m, cd, nome:m.nome, telefone:m.telefone, escalas:esc,
+        status:normalizarStatus(s.status), enviado_em:s.enviado_em||'',
+        ultimo_reenvio:s.ultimo_reenvio||'', respondido_em:s.respondido_em||'',
+        resposta_recebida:s.resposta_recebida||''
       }
-    }
-    date.setDate(date.getDate() + 1)
-  }
-  return dias
-}
-
-
-function filtrarFeriadosDasDatas(datas = []) {
-  return datas.filter((data) => {
-    const [dia, mes] = data.split('/')
-    const iso = `2026-${mes}-${dia}`
-    return !feriadosSet.has(iso)
-  })
-}
-
-function formatHour(h) {
-  return h.replace(':00', ':00h').replace(':30', ':30h')
-}
-
-function agruparEscalas(escalas) {
-  const map = new Map()
-  for (const escala of escalas) {
-    const key = `${escala.dia}-${escala.label}`
-    if (!map.has(key)) map.set(key, { dia: escala.dia, label: escala.label, itens: [] })
-    map.get(key).itens.push(escala)
-  }
-  return Array.from(map.values()).sort((a, b) => a.dia - b.dia)
-}
-
-function gerarMensagem(medico) {
-  const grupos = agruparEscalas(medico.escalas)
-
-  const blocos = grupos.map((grupo) => {
-    const linhas = grupo.itens.map((e) => {
-      const datasOrigem = Array.isArray(e.datas) && e.datas.length
-        ? e.datas
-        : diasDoMesPorSemana(2026, 9, grupo.dia)
-
-      const datas = filtrarFeriadosDasDatas(datasOrigem).join(', ')
-      const especialidade =
-        medico.complexa || grupo.itens.length > 1
-          ? `${e.especialidade}\n`
-          : ''
-
-      const almoco = e.almoco
-        ? `Almoço: ${e.almoco}`
-        : 'Sem almoço'
-
-      return `${especialidade}${datas}
-Horário: ${e.inicio} às ${e.fim} hrs
-${almoco}${e.obs ? `\nObservação: ${e.obs}` : ''}`
     })
-
-    return `*${grupo.label}*\n${linhas.join('\n\n')}`
-  })
-
-  return `Boa tarde, ${medico.nomeCurto}!
-Começamos a abertura das
-
-*AGENDAS DE OUTUBRO*
-
-📌Solicito por gentileza, que me envie os dias e horários que irá atender no ambulatório do CC NITEROI
-
-${blocos.join('\n\n')}
-
-❗Atenção aos FERIADOS e FÉRIAS e datas que desejam realizar o bloqueio das agendas para enviar as datas corretas e evitar cancelamentos após a abertura das agendas.
-Por favor, nos envie o mais breve possível. Caso tenha alguma dúvida estou à disposição.`
 }
 
-function Badge({ status, teste }) {
-  if (teste) return <span className="badge badge-test">Teste</span>
-  const labels = {
-    nao_enviado: ['Não enviado', 'badge-neutral'],
-    aguardando: ['Aguardando resposta', 'badge-warn'],
-    respondido: ['Respondido', 'badge-ok'],
-  }
-  const [label, cls] = labels[status]
-  return <span className={`badge ${cls}`}>{label}</span>
-}
-
-function Modal({ children, onClose, wide = false }) {
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className={`modal ${wide ? 'modal-wide' : ''}`} onMouseDown={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Fechar">
-          <X size={20} />
-        </button>
-        {children}
-      </div>
+function Modal({children,onClose}) {
+  return <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="modal" onMouseDown={e=>e.stopPropagation()}>
+      <button className="modal-x" onClick={onClose}><X size={18}/></button>{children}
     </div>
-  )
+  </div>
 }
 
-function App() {
-  const [doctors, setDoctors] = useState([])
-  const [activePage, setActivePage] = useState('abertura')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [query, setQuery] = useState('')
-  const [selectedDoctor, setSelectedDoctor] = useState(null)
-  const [detailsDoctor, setDetailsDoctor] = useState(null)
-  const [responseDoctor, setResponseDoctor] = useState(null)
-  const [evidenceLoadingCd, setEvidenceLoadingCd] = useState('')
-  const [previewDoctor, setPreviewDoctor] = useState(null)
-  const [previewImage, setPreviewImage] = useState('')
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewAction, setPreviewAction] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [lastSync, setLastSync] = useState(null)
+export default function App() {
+  const [activePage,setActivePage] = useState('abertura')
+  const [sidebarOpen,setSidebarOpen] = useState(true)
+  const [unidade,setUnidade] = useState(UNIDADE_PADRAO)
+  const [competencias,setCompetencias] = useState([COMPETENCIA_INICIAL])
+  const [competencia,setCompetencia] = useState(COMPETENCIA_INICIAL)
+  const [medicosBase,setMedicosBase] = useState([])
+  const [escalas,setEscalas] = useState([])
+  const [solicitacoes,setSolicitacoes] = useState([])
+  const [loading,setLoading] = useState(true)
+  const [error,setError] = useState('')
+  const [success,setSuccess] = useState('')
+  const [query,setQuery] = useState('')
+  const [selectedDoctor,setSelectedDoctor] = useState(null)
+  const [responseDoctor,setResponseDoctor] = useState(null)
+  const [doctorForm,setDoctorForm] = useState(null)
+  const [futureDoctor,setFutureDoctor] = useState(null)
+  const [sending,setSending] = useState(false)
+  const [lastSync,setLastSync] = useState(null)
 
-  const refreshData = async () => {
-    setLoading(true)
-    setError('')
+  const doctors = useMemo(()=>montarDoctors(medicosBase,escalas,solicitacoes),[medicosBase,escalas,solicitacoes])
+  const filtered = useMemo(()=>{
+    const q=query.toLowerCase().trim()
+    if(!q) return doctors
+    return doctors.filter(d=>[d.nome,d.especialidade,d.cd].some(v=>String(v||'').toLowerCase().includes(q)))
+  },[doctors,query])
+  const counters = useMemo(()=>({
+    total:doctors.length,
+    enviados:doctors.filter(d=>d.status!=='nao_enviado').length,
+    aguardando:doctors.filter(d=>d.status==='aguardando').length,
+    respondidos:doctors.filter(d=>d.status==='respondido').length
+  }),[doctors])
+  const responseRate = counters.enviados ? Math.round(counters.respondidos/counters.enviados*100) : 0
+  const liberacao = useMemo(()=>calcularLiberacao(competencias),[competencias])
+
+  async function carregarCompetencias() {
     try {
-      const [medRes, escRes, solRes] = await Promise.all([
+      const r=await fetch(`/api/agenda-competencias?unidade=${encodeURIComponent(unidade)}`)
+      if(!r.ok) throw new Error()
+      const j=await r.json()
+      const lista=(j.competencias||[]).filter(c=>c>=COMPETENCIA_INICIAL).sort()
+      if(lista.length) {
+        setCompetencias(lista)
+        if(!lista.includes(competencia)) setCompetencia(lista[lista.length-1])
+      }
+    } catch {
+      setCompetencias(prev=>prev.length?prev:[COMPETENCIA_INICIAL])
+    }
+  }
+
+  async function refreshData(comp=competencia) {
+    setLoading(true); setError('')
+    try {
+      const [mr,er,sr]=await Promise.all([
         fetch('/api/agenda-medicos'),
-        fetch('/api/agenda-escalas?unidade=Niter%C3%B3i&competencia=2026-10'),
-        fetch('/api/agenda-solicitacoes?unidade=Niter%C3%B3i&competencia=2026-10'),
+        fetch(`/api/agenda-escalas?unidade=${encodeURIComponent(unidade)}&competencia=${encodeURIComponent(comp)}`),
+        fetch(`/api/agenda-solicitacoes?unidade=${encodeURIComponent(unidade)}&competencia=${encodeURIComponent(comp)}`)
       ])
-
-      if (!medRes.ok || !escRes.ok || !solRes.ok) {
-        throw new Error('Não foi possível carregar os dados do n8n.')
-      }
-
-      const [medData, escData, solData] = await Promise.all([
-        medRes.json(), escRes.json(), solRes.json(),
-      ])
-
-      setDoctors(montarDoctors(
-        medData.medicos || [],
-        escData.escalas || [],
-        solData.solicitacoes || [],
-      ))
+      if(!mr.ok||!er.ok||!sr.ok) throw new Error('Não foi possível carregar os dados do n8n.')
+      const [m,e,s]=await Promise.all([mr.json(),er.json(),sr.json()])
+      setMedicosBase(m.medicos||[]); setEscalas(e.escalas||[]); setSolicitacoes(s.solicitacoes||[])
       setLastSync(new Date())
-    } catch (err) {
-      setError(err.message || 'Falha ao carregar os dados.')
-    } finally {
-      setLoading(false)
-    }
+    } catch(err) { setError(err.message||'Falha ao carregar dados.') }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    refreshData()
-  }, [])
+  useEffect(()=>{ carregarCompetencias() },[unidade])
+  useEffect(()=>{ refreshData(competencia) },[competencia,unidade])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return doctors
-    return doctors.filter((d) =>
-      [d.nome, d.especialidade, d.cd].some((v) => v.toLowerCase().includes(q))
-    )
-  }, [doctors, query])
+  async function enviar(doc) {
+    if(sending) return
+    setSending(true); setError(''); setSuccess('')
+    try{
+      const r=await fetch('/api/agenda-enviar-teste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:doc.cd,competencia})})
+      const j=await r.json().catch(()=>({}))
+      if(!r.ok||j.ok===false) throw new Error(j.mensagem||j.error||'Falha ao enviar.')
+      setSuccess(`Mensagem enviada para ${doc.nome}.`); setSelectedDoctor(null); await refreshData()
+    }catch(e){setError(e.message)} finally{setSending(false)}
+  }
 
-  const counters = useMemo(() => ({
-    total: doctors.length,
-    enviados: doctors.filter(d => d.status !== 'nao_enviado').length,
-    aguardando: doctors.filter(d => d.status === 'aguardando').length,
-    respondidos: doctors.filter(d => d.status === 'respondido').length,
-  }), [doctors])
-
-  const confirmSend = async () => {
-    if (!selectedDoctor || sending) return
-
-    setSending(true)
-    setError('')
-    setSuccess('')
+  async function salvarMedico(form) {
+    setError(''); setSuccess('')
     try {
-      const response = await fetch('/api/agenda-enviar-teste', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cd_medico: selectedDoctor.cd,
-          competencia: '2026-10',
-        }),
-      })
-
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.mensagem || data.error || data.erro || 'Falha ao enviar a mensagem.')
-      }
-
-      setSuccess(`Mensagem enviada para ${selectedDoctor.nomeCurto}.`)
-      setSelectedDoctor(null)
-      await refreshData()
-    } catch (err) {
-      setError(err.message || 'Não foi possível enviar a mensagem.')
-    } finally {
-      setSending(false)
-    }
+      const r=await fetch('/api/agenda-medico-salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,unidade})})
+      const j=await r.json().catch(()=>({}))
+      if(!r.ok||j.ok===false) throw new Error(j.mensagem||j.error||'Não foi possível salvar o médico.')
+      setSuccess('Cadastro do médico salvo na planilha.'); setDoctorForm(null); await refreshData()
+    } catch(e){setError(e.message)}
   }
 
-  const downloadEvidence = async (doc) => {
-    if (!doc || evidenceLoadingCd) return
-
-    setEvidenceLoadingCd(doc.cd)
-    setError('')
-    setSuccess('')
-
+  async function desativarMedico(doc) {
+    if(!confirm(`Desativar ${doc.nome}? O histórico das competências anteriores será preservado.`)) return
     try {
-      const response = await fetch('/api/agenda-evidencia-teste', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cd_medico: doc.cd }),
-      })
-
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type') || ''
-        let detail = {}
-
-        if (contentType.includes('application/json')) {
-          detail = await response.json().catch(() => ({}))
-        } else {
-          const text = await response.text().catch(() => '')
-          detail = { mensagem: text }
-        }
-
-        throw new Error(
-          detail.mensagem ||
-          detail.error ||
-          detail.erro ||
-          'Não foi possível gerar a evidência.'
-        )
-      }
-
-      const blob = await response.blob()
-      if (!blob.size) {
-        throw new Error('A evidência foi gerada sem conteúdo.')
-      }
-
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `evidencia-whatsapp-${doc.cd}-2026-10.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 1500)
-
-      setSuccess(`Evidência de ${doc.nomeCurto} gerada com sucesso.`)
-    } catch (err) {
-      setError(err.message || 'Não foi possível obter a evidência.')
-    } finally {
-      setEvidenceLoadingCd('')
-    }
+      const r=await fetch('/api/agenda-medico-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:doc.cd,ativo:'Não'})})
+      const j=await r.json().catch(()=>({}))
+      if(!r.ok||j.ok===false) throw new Error(j.mensagem||j.error||'Falha ao desativar.')
+      setSuccess('Médico desativado.'); await refreshData()
+    } catch(e){setError(e.message)}
   }
 
-
-  const openPreview = async (doc) => {
-    if (!doc || previewLoading) return
-
-    setPreviewDoctor(doc)
-    setPreviewLoading(true)
-    setPreviewAction('Abrindo conversa...')
-    setError('')
-    setSuccess('')
-
+  async function confirmarEscala(payload) {
     try {
-      const response = await fetch('/api/agenda-preview-iniciar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cd_medico: doc.cd }),
-      })
-
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok || !data?.ok || !data?.preview_url) {
-        throw new Error(
-          data.mensagem ||
-          data.error ||
-          data.erro ||
-          'Não foi possível abrir o preview.'
-        )
-      }
-
-      setPreviewImage(`${data.preview_url}${data.preview_url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    } catch (err) {
-      setPreviewDoctor(null)
-      setError(err.message || 'Não foi possível abrir o preview.')
-    } finally {
-      setPreviewLoading(false)
-      setPreviewAction('')
-    }
+      const r=await fetch('/api/agenda-escala-confirmar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      const j=await r.json().catch(()=>({}))
+      if(!r.ok||j.ok===false) throw new Error(j.mensagem||j.error||'Não foi possível confirmar a escala.')
+      setSuccess(`Escala confirmada para ${competenciaLabel(payload.competencia)}.`)
+      setFutureDoctor(null)
+      await carregarCompetencias()
+      if(payload.competencia===competencia) await refreshData()
+    } catch(e){setError(e.message)}
   }
 
-  const scrollPreview = async (direcao, intensidade) => {
-    if (!previewDoctor || previewLoading) return
-
-    setPreviewLoading(true)
-    setPreviewAction(
-      direcao === 'cima'
-        ? (intensidade === 'longo' ? 'Subindo bastante...' : 'Subindo...')
-        : (intensidade === 'longo' ? 'Descendo bastante...' : 'Descendo...')
-    )
-
-    try {
-      const response = await fetch('/api/agenda-preview-rolar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cd_medico: previewDoctor.cd,
-          direcao,
-          intensidade,
-        }),
-      })
-
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok || !data?.ok || !data?.preview_url) {
-        throw new Error(
-          data.mensagem ||
-          data.error ||
-          data.erro ||
-          'Não foi possível atualizar o preview.'
-        )
-      }
-
-      setPreviewImage(`${data.preview_url}${data.preview_url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    } catch (err) {
-      setError(err.message || 'Não foi possível rolar o preview.')
-    } finally {
-      setPreviewLoading(false)
-      setPreviewAction('')
-    }
+  const pageMeta={
+    dashboard:['Dashboard','Visão geral do ciclo de abertura de agendas'],
+    abertura:['Abertura de Agenda Médica','Controle de solicitações, respostas e evidências'],
+    respondidos:['Respondidos','Conferência das respostas recebidas'],
+    medicos:['Médicos','Cadastro e manutenção sem abrir a planilha'],
+    futuras:['Futuras Agendas','Prepare novas competências respeitando a regra do dia 15'],
+    configuracoes:['Configurações','Parâmetros e integrações do painel']
   }
 
-  const capturePreview = async () => {
-    if (!previewDoctor || previewLoading) return
+  const Filters=()=> <div className="filters-card">
+    <div className="field"><label>Unidade</label><select value={unidade} onChange={e=>setUnidade(e.target.value)}><option>Niterói</option></select></div>
+    <div className="field"><label>Competência</label><select value={competencia} onChange={e=>setCompetencia(e.target.value)}>
+      {competencias.map(c=><option key={c} value={c}>{competenciaLabel(c)}</option>)}
+    </select></div>
+    <div className="field"><label>Ano</label><input value={competencia.split('-')[0]} readOnly/></div>
+  </div>
 
-    setPreviewLoading(true)
-    setPreviewAction('Capturando trecho...')
+  const Metrics=()=> <div className="metrics">
+    <div className="metric"><Users/><span>Total de médicos</span><strong>{counters.total}</strong></div>
+    <div className="metric"><Send/><span>Enviados</span><strong>{counters.enviados}</strong></div>
+    <div className="metric"><Clock3/><span>Aguardando</span><strong>{counters.aguardando}</strong></div>
+    <div className="metric"><CheckCircle2/><span>Respondidos</span><strong>{counters.respondidos}</strong></div>
+  </div>
 
-    try {
-      const response = await fetch('/api/agenda-preview-capturar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cd_medico: previewDoctor.cd }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(
-          data.mensagem ||
-          data.error ||
-          data.erro ||
-          'Não foi possível capturar o trecho.'
-        )
-      }
-
-      const blob = await response.blob()
-      if (!blob.size) throw new Error('A captura retornou sem conteúdo.')
-
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `evidencia-trecho-${previewDoctor.cd}.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 1500)
-
-      setSuccess(`Trecho de ${previewDoctor.nomeCurto} capturado com sucesso.`)
-    } catch (err) {
-      setError(err.message || 'Não foi possível capturar o trecho.')
-    } finally {
-      setPreviewLoading(false)
-      setPreviewAction('')
-    }
+  function renderDashboard(){
+    return <><Filters/><Metrics/><div className="dashboard-grid">
+      <section className="card"><h2>Taxa de resposta</h2><div className="big-number">{responseRate}%</div><div className="progress"><i style={{width:`${responseRate}%`}}/></div><p>{counters.respondidos} de {counters.enviados} solicitações enviadas já foram respondidas.</p></section>
+      <section className="card"><h2>Competência selecionada</h2><div className="big-label">{competenciaLabel(competencia)}</div><p>O Dashboard só lista competências que já possuem pelo menos uma escala confirmada para a unidade.</p></section>
+    </div></>
   }
 
-  const closePreview = async () => {
-    const doc = previewDoctor
-    setPreviewDoctor(null)
-    setPreviewImage('')
-    setPreviewLoading(false)
-    setPreviewAction('')
-
-    if (!doc) return
-
-    fetch('/api/agenda-preview-fechar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cd_medico: doc.cd }),
-    }).catch(() => {})
+  function renderAbertura(){
+    const fer=feriadosDaCompetencia(competencia)
+    return <><Filters/>
+      {!!fer.length&&<div className="notice"><CalendarDays/><div><strong>Feriados em {competenciaLabel(competencia)}</strong><span>{fer.map(f=>`${isoToBR(f.data).slice(0,5)} — ${f.nome}`).join(' · ')}</span></div></div>}
+      <Metrics/>
+      <section className="table-card"><div className="table-head"><div><h2>Médicos — {unidade}</h2><p>{competenciaLabel(competencia)} · somente escalas confirmadas</p></div><SearchBox/></div>
+        <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Escala</th><th>Status</th><th>Último envio</th><th>Ação</th></tr></thead>
+        <tbody>{loading?<State/>:filtered.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.escalas.length?d.escalas.map(e=>e.dia_semana).join(' / '):'—'}</td><td><Badge status={d.status}/></td><td>{d.ultimo_reenvio||d.enviado_em||'—'}</td><td><div className="actions">
+          {d.status==='nao_enviado'&&<button className="primary" onClick={()=>setSelectedDoctor(d)}><Send size={15}/> Enviar</button>}
+          {d.status==='aguardando'&&<button className="outline" onClick={()=>setSelectedDoctor(d)}><RotateCcw size={15}/> Reenviar</button>}
+          {d.status==='respondido'&&<button className="outline" onClick={()=>setResponseDoctor(d)}><MessageSquareText size={15}/> Ver resposta</button>}
+        </div></td></tr>)}</tbody></table></div>
+      </section></>
   }
 
-
-  const respondedDoctors = useMemo(
-    () => doctors.filter(d => d.status === 'respondido'),
-    [doctors]
-  )
-
-  const waitingDoctors = useMemo(
-    () => doctors.filter(d => d.status === 'aguardando'),
-    [doctors]
-  )
-
-  const specialtySummary = useMemo(() => {
-    const map = new Map()
-    doctors.forEach((d) => {
-      const key = d.especialidade || 'SEM ESPECIALIDADE'
-      const atual = map.get(key) || { total: 0, enviados: 0, respondidos: 0 }
-      atual.total += 1
-      if (d.status !== 'nao_enviado') atual.enviados += 1
-      if (d.status === 'respondido') atual.respondidos += 1
-      map.set(key, atual)
-    })
-    return Array.from(map.entries())
-      .map(([especialidade, dados]) => ({ especialidade, ...dados }))
-      .sort((a, b) => b.total - a.total || a.especialidade.localeCompare(b.especialidade))
-  }, [doctors])
-
-  const responseRate = counters.enviados
-    ? Math.round((counters.respondidos / counters.enviados) * 100)
-    : 0
-
-  const pageMeta = {
-    dashboard: {
-      title: 'Dashboard',
-      subtitle: 'Visão geral do ciclo de abertura de agendas',
-    },
-    abertura: {
-      title: 'Abertura de Agenda Médica',
-      subtitle: 'Controle de solicitações, respostas e evidências',
-    },
-    respondidos: {
-      title: 'Respondidos',
-      subtitle: 'Conferência das respostas recebidas e evidências',
-    },
-    medicos: {
-      title: 'Médicos',
-      subtitle: 'Cadastro operacional e escalas da unidade',
-    },
-    configuracoes: {
-      title: 'Configurações',
-      subtitle: 'Parâmetros e saúde das integrações do painel',
-    },
+  function renderRespondidos(){
+    const lista=doctors.filter(d=>d.status==='respondido')
+    return <><Filters/><section className="table-card"><div className="table-head"><div><h2>Respostas recebidas</h2><p>{competenciaLabel(competencia)} · {unidade}</p></div></div>
+      <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Respondido em</th><th>Resposta</th></tr></thead><tbody>
+      {lista.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.respondido_em||'—'}</td><td><button className="outline" onClick={()=>setResponseDoctor(d)}>Ver resposta</button></td></tr>)}
+      {!lista.length&&!loading&&<tr><td colSpan="4" className="empty">Nenhuma resposta nesta competência.</td></tr>}
+      </tbody></table></div></section></>
   }
 
-  const renderMetrics = () => (
-    <div className="metrics">
-      <div className="metric-card">
-        <div className="metric-icon"><Users size={20} /></div>
-        <div><span>Total de médicos</span><strong>{counters.total}</strong></div>
-      </div>
-      <div className="metric-card">
-        <div className="metric-icon"><Send size={20} /></div>
-        <div><span>Enviados</span><strong>{counters.enviados}</strong></div>
-      </div>
-      <div className="metric-card">
-        <div className="metric-icon"><Clock3 size={20} /></div>
-        <div><span>Aguardando</span><strong>{counters.aguardando}</strong></div>
-      </div>
-      <div className="metric-card">
-        <div className="metric-icon"><CheckCircle2 size={20} /></div>
-        <div><span>Respondidos</span><strong>{counters.respondidos}</strong></div>
-      </div>
-    </div>
-  )
-
-  const renderDashboard = () => (
-    <>
-      {renderMetrics()}
-
-      <div className="dashboard-grid">
-        <section className="insight-card response-rate-card">
-          <div className="insight-card-head">
-            <div>
-              <span className="eyebrow-inline">Indicador</span>
-              <h2>Taxa de resposta</h2>
-            </div>
-            <div className="insight-icon"><BarChart3 size={20} /></div>
-          </div>
-          <div className="big-rate">{responseRate}%</div>
-          <div className="progress-track">
-            <div className="progress-bar" style={{ width: `${responseRate}%` }} />
-          </div>
-          <p>{counters.respondidos} de {counters.enviados} solicitações enviadas já foram respondidas.</p>
-        </section>
-
-        <section className="insight-card">
-          <div className="insight-card-head">
-            <div>
-              <span className="eyebrow-inline">Operação</span>
-              <h2>Próxima ação</h2>
-            </div>
-            <div className="insight-icon"><Activity size={20} /></div>
-          </div>
-          {waitingDoctors.length ? (
-            <>
-              <strong className="action-number">{waitingDoctors.length}</strong>
-              <p>médico(s) aguardando resposta. Use a tela Abertura de Agenda para acompanhar ou reenviar.</p>
-              <button className="outline-btn" onClick={() => setActivePage('abertura')}>
-                Ir para abertura <ChevronRight size={15} />
-              </button>
-            </>
-          ) : counters.enviados === counters.total && counters.total > 0 ? (
-            <>
-              <div className="good-state"><CheckCircle2 size={24} /> Ciclo sem pendências de resposta.</div>
-              <p>Todos os médicos enviados já retornaram.</p>
-            </>
-          ) : (
-            <>
-              <strong className="action-number">{counters.total - counters.enviados}</strong>
-              <p>médico(s) ainda não receberam a solicitação desta competência.</p>
-              <button className="outline-btn" onClick={() => setActivePage('abertura')}>
-                Iniciar envios <ChevronRight size={15} />
-              </button>
-            </>
-          )}
-        </section>
-      </div>
-
-      <section className="table-card">
-        <div className="table-head">
-          <div>
-            <h2>Resumo por especialidade</h2>
-            <p>Distribuição dos médicos e andamento das solicitações em Outubro/2026.</p>
-          </div>
-        </div>
-        <div className="table-wrap">
-          <table className="compact-table">
-            <thead>
-              <tr>
-                <th>Especialidade</th>
-                <th>Médicos</th>
-                <th>Enviados</th>
-                <th>Respondidos</th>
-                <th>Retorno</th>
-              </tr>
-            </thead>
-            <tbody>
-              {specialtySummary.map((item) => {
-                const rate = item.enviados ? Math.round(item.respondidos / item.enviados * 100) : 0
-                return (
-                  <tr key={item.especialidade}>
-                    <td><strong>{item.especialidade}</strong></td>
-                    <td>{item.total}</td>
-                    <td>{item.enviados}</td>
-                    <td>{item.respondidos}</td>
-                    <td><span className="mini-rate">{rate}%</span></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  )
-
-  const renderRespondidos = () => (
-    <section className="table-card standalone-card">
-      <div className="table-head">
-        <div>
-          <h2>Respostas recebidas — Niterói</h2>
-          <p>Fila de conferência das respostas registradas para Outubro/2026.</p>
-        </div>
-        <div className="page-count">
-          <MessageSquareText size={16} />
-          {respondedDoctors.length} respondido(s)
-        </div>
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Médico</th>
-              <th>Especialidade</th>
-              <th>Respondido em</th>
-              <th>Resposta</th>
-              <th className="th-actions">Conferência</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan="5" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando respostas...</td></tr>
-            )}
-            {!loading && respondedDoctors.length === 0 && (
-              <tr>
-                <td colSpan="5">
-                  <div className="empty-state">
-                    <MessageSquareText size={28} />
-                    <strong>Nenhuma resposta registrada ainda</strong>
-                    <span>As respostas aparecerão aqui automaticamente quando chegarem pelo WhatsApp.</span>
-                  </div>
-                </td>
-              </tr>
-            )}
-            {!loading && respondedDoctors.map((doc) => (
-              <tr key={doc.cd}>
-                <td>
-                  <div className="doctor-cell">
-                    <div className="avatar">{doc.nome.split(' ').slice(0,2).map(n => n[0]).join('')}</div>
-                    <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
-                  </div>
-                </td>
-                <td>{doc.especialidade}</td>
-                <td>{doc.respondeuEm || '—'}</td>
-                <td>
-                  <div className="response-snippet">
-                    {doc.respostaRecebida || 'Resposta registrada sem texto.'}
-                  </div>
-                </td>
-                <td>
-                  <div className="actions">
-                    <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
-                      <MessageSquareText size={15} /> Ver resposta
-                    </button>
-                    <button className="evidence-btn" onClick={() => openPreview(doc)} disabled={previewLoading}>
-                      <FileImage size={15} /> Evidência
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  function renderMedicos(){
+    return <section className="table-card"><div className="table-head"><div><h2>Cadastro de médicos — {unidade}</h2><p>As alterações são gravadas na aba Medicos da planilha operacional.</p></div>
+      <div className="head-actions"><SearchBox/><button className="primary" onClick={()=>setDoctorForm({cd_medico:'',nome:'',especialidade:'',subespecialidade:'',telefone:'',ativo:'Sim'})}><Plus size={16}/> Adicionar médico</button></div></div>
+      <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Telefone</th><th>Escala atual</th><th>Ações</th></tr></thead><tbody>
+        {filtered.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td><Phone size={14}/> {d.telefone}</td><td>{d.escalas.length?d.escalas.map(e=>e.dia_semana).join(' / '):'Sem escala'}</td>
+        <td><div className="actions"><button className="outline" onClick={()=>setDoctorForm({cd_medico:d.cd,nome:d.nome,especialidade:d.especialidade||'',subespecialidade:d.subespecialidade||'',telefone:d.telefone||'',ativo:'Sim'})}><Pencil size={15}/> Editar</button>
+        <button className="danger" onClick={()=>desativarMedico(d)}><UserX size={15}/> Desativar</button></div></td></tr>)}
+      </tbody></table></div>
+      <div className="info"><Database size={16}/> A planilha continua sendo o banco de dados; o usuário administra os registros pelo painel.</div>
     </section>
-  )
-
-  const renderMedicos = () => (
-    <section className="table-card standalone-card">
-      <div className="table-head">
-        <div>
-          <h2>Cadastro operacional — Niterói</h2>
-          <p>Dados usados pelo sistema para envio, identificação e montagem das escalas.</p>
-        </div>
-        <div className="search-box">
-          <Search size={17} />
-          <input
-            placeholder="Buscar médico, especialidade ou CD..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Médico</th>
-              <th>Especialidade</th>
-              <th>Telefone</th>
-              <th>Escala cadastrada</th>
-              <th>Situação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan="5" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando médicos...</td></tr>
-            )}
-            {!loading && filtered.map((doc) => {
-              const groups = agruparEscalas(doc.escalas)
-              return (
-                <tr key={doc.cd}>
-                  <td>
-                    <div className="doctor-cell">
-                      <div className="avatar">{doc.nome.split(' ').slice(0,2).map(n => n[0]).join('')}</div>
-                      <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="specialty-cell">
-                      <span>{doc.especialidade}</span>
-                      {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
-                    </div>
-                  </td>
-                  <td><span className="phone-cell"><Phone size={14} /> {doc.telefone}</span></td>
-                  <td>
-                    {groups.length ? (
-                      <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>
-                        {groups.map(g => g.label.split('-')[0]).join(' / ')}
-                        <ChevronRight size={15} />
-                      </button>
-                    ) : <span className="badge badge-warn">Sem escala</span>}
-                  </td>
-                  <td>
-                    <span className="status-line"><UserRoundCheck size={15} /> Ativo</span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="info-strip">
-        <Database size={16} />
-        <span>Cadastro e alterações continuam sendo administrados na aba <strong>Medicos</strong> da planilha operacional nesta RC.</span>
-      </div>
-    </section>
-  )
-
-  const renderConfiguracoes = () => (
-    <div className="settings-grid">
-      <section className="settings-card">
-        <div className="settings-card-title">
-          <div className="settings-icon"><Settings size={19} /></div>
-          <div><h2>Operação atual</h2><p>Parâmetros utilizados nesta versão.</p></div>
-        </div>
-        <div className="settings-list">
-          <div><span>Unidade</span><strong>Niterói</strong></div>
-          <div><span>Competência</span><strong>Outubro/2026</strong></div>
-          <div><span>Fuso horário</span><strong>America/Sao_Paulo</strong></div>
-          <div><span>Feriados</span><strong>Remoção automática das datas cadastradas</strong></div>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-card-title">
-          <div className="settings-icon"><Wifi size={19} /></div>
-          <div><h2>Integrações</h2><p>Estado observado pelo painel.</p></div>
-        </div>
-        <div className="integration-list">
-          <div className="integration-row">
-            <span><Database size={16} /> Google Sheets via n8n</span>
-            <strong className={lastSync ? 'integration-ok' : 'integration-off'}>
-              {lastSync ? <><ShieldCheck size={15} /> Conectado</> : <><CircleOff size={15} /> Sem leitura</>}
-            </strong>
-          </div>
-          <div className="integration-row">
-            <span><MessageSquareText size={16} /> WhatsApp / Evolution</span>
-            <strong className="integration-neutral">Validado no envio</strong>
-          </div>
-          <div className="integration-row">
-            <span><FileImage size={16} /> Serviço de evidência</span>
-            <strong className="integration-neutral">Sob demanda</strong>
-          </div>
-        </div>
-        <button className="outline-btn settings-refresh" onClick={refreshData} disabled={loading}>
-          <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          Testar leitura dos dados
-        </button>
-        {lastSync && (
-          <span className="last-sync">Última leitura bem-sucedida: {lastSync.toLocaleString('pt-BR')}</span>
-        )}
-      </section>
-
-      <section className="settings-card settings-wide">
-        <div className="settings-card-title">
-          <div className="settings-icon"><ClipboardCheck size={19} /></div>
-          <div><h2>Modelo operacional da mensagem</h2><p>A prévia final continua sendo montada médico a médico a partir da escala.</p></div>
-        </div>
-        <div className="message-template">
-          <strong>Estrutura atual</strong>
-          <p>Saudação → competência → solicitação da unidade → dias/horários da escala → alerta de feriados/férias → pedido de retorno.</p>
-        </div>
-        <div className="info-strip no-margin">
-          <ShieldCheck size={16} />
-          <span>Nesta RC, configurações críticas permanecem controladas pelo n8n e pela planilha para evitar alterações acidentais em produção.</span>
-        </div>
-      </section>
-    </div>
-  )
-
-  const renderAbertura = () => (
-    <>
-      <div className="filters-card">
-        <div className="field">
-          <label>Unidade</label>
-          <select defaultValue="Niterói">
-            {unidades.map((u) => (
-              <option key={u} value={u} disabled={u !== 'Niterói'}>{u}</option>
-            ))}
-          </select>
-          <span className="field-help">Demais unidades estarão disponíveis em versões futuras.</span>
-        </div>
-        <div className="field">
-          <label>Mês</label>
-          <select defaultValue="Outubro">
-            {meses.map((m) => (
-              <option key={m} value={m} disabled={m !== 'Outubro'}>{m}</option>
-            ))}
-          </select>
-          <span className="field-help">Base piloto: Outubro/2026.</span>
-        </div>
-        <div className="field year-field">
-          <label>Ano</label>
-          <input value="2026" readOnly />
-        </div>
-      </div>
-
-      <div className="holiday-notice">
-        <CalendarDays size={17} />
-        <div>
-          <strong>Feriado em Outubro/2026:</strong>
-          <span>12/10 — Nossa Senhora Aparecida. A data é removida automaticamente das opções de atendimento.</span>
-        </div>
-      </div>
-
-      {renderMetrics()}
-
-      <section className="table-card">
-        <div className="table-head">
-          <div>
-            <h2>Médicos — Niterói</h2>
-            <p>Outubro de 2026 · operação liberada para os médicos ativos da unidade</p>
-          </div>
-          <div className="search-box">
-            <Search size={17} />
-            <input
-              placeholder="Buscar médico, especialidade ou CD..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Médico</th>
-                <th>Especialidade</th>
-                <th>Escala</th>
-                <th>Status</th>
-                <th>Último envio</th>
-                <th className="th-actions">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan="6" className="table-state"><LoaderCircle size={20} className="spin" /> Carregando dados do Google Sheets...</td></tr>
-              )}
-              {!loading && filtered.length === 0 && (
-                <tr><td colSpan="6" className="table-state">Nenhum médico encontrado.</td></tr>
-              )}
-              {!loading && filtered.map((doc) => {
-                const groups = agruparEscalas(doc.escalas)
-                const resumo = groups.map(g => g.label.split('-')[0].trim()).join(' / ')
-                return (
-                  <tr key={doc.id}>
-                    <td>
-                      <div className="doctor-cell">
-                        <div className="avatar">{doc.nome.split(' ').slice(0, 2).map(n => n[0]).join('')}</div>
-                        <div><strong>{doc.nome}</strong><span>CD {doc.cd}</span></div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="specialty-cell">
-                        <span>{doc.especialidade}</span>
-                        {doc.subespecialidade && <small>{doc.subespecialidade}</small>}
-                      </div>
-                    </td>
-                    <td>
-                      {doc.complexa ? (
-                        <button className="link-btn" onClick={() => setDetailsDoctor(doc)}>
-                          Ver detalhes <ChevronRight size={15} />
-                        </button>
-                      ) : (
-                        <span className="schedule-summary">{resumo}</span>
-                      )}
-                    </td>
-                    <td><Badge status={doc.status} /></td>
-                    <td>
-                      {doc.ultimoEnvio ? (
-                        <div className="date-cell">
-                          <strong>{doc.ultimoEnvio.split(' ')[0]}</strong>
-                          <span>{doc.ultimoEnvio.split(' ')[1] || ''}</span>
-                        </div>
-                      ) : <span className="muted">—</span>}
-                    </td>
-                    <td>
-                      <div className="actions">
-                        {doc.status === 'nao_enviado' && (
-                          <button className="primary-btn" onClick={() => setSelectedDoctor(doc)}>
-                            <Send size={15} /> Enviar
-                          </button>
-                        )}
-                        {doc.status === 'aguardando' && (
-                          <button className="outline-btn" onClick={() => setSelectedDoctor(doc)}>
-                            <RotateCcw size={15} /> Reenviar
-                          </button>
-                        )}
-                        {doc.status === 'respondido' && (
-                          <>
-                            <button className="outline-btn" onClick={() => setResponseDoctor(doc)}>
-                              <MessageSquareText size={15} /> Ver resposta
-                            </button>
-                            <button className="evidence-btn" onClick={() => openPreview(doc)} disabled={previewLoading}>
-                              <FileImage size={15} /> Evidência
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  )
-
-  const renderCurrentPage = () => {
-    if (activePage === 'dashboard') return renderDashboard()
-    if (activePage === 'respondidos') return renderRespondidos()
-    if (activePage === 'medicos') return renderMedicos()
-    if (activePage === 'configuracoes') return renderConfiguracoes()
-    return renderAbertura()
   }
 
-  return (
-    <div className="app">
-      <aside className={`sidebar ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
-        <div className="brand">
-          <div className="brand-mark"><Stethoscope size={22} /></div>
-          {sidebarOpen && (
-            <div>
-              <strong>Abertura de Agenda</strong>
-            </div>
-          )}
-        </div>
+  function renderFuturas(){
+    const target=liberacao.competencia
+    const jaExiste=competencias.includes(target)
+    return <><div className="future-hero"><div><span className="eyebrow">Próxima competência</span><h2>{competenciaLabel(target)}</h2>
+      <p>{liberacao.liberado?'Competência liberada para preparação.':'Ainda bloqueada pela regra operacional.'}</p></div>
+      <div className={`unlock ${liberacao.liberado?'open':'locked'}`}>{liberacao.liberado?<CalendarPlus/>:<LockKeyhole/>}<strong>{liberacao.liberado?'Liberado':'Libera em '+liberacao.data}</strong></div></div>
+      <div className="notice"><AlertTriangle/><div><strong>Regra operacional</strong><span>A partir do dia 15 de cada mês, libera-se a preparação da agenda de dois meses à frente. A competência só aparece no Dashboard e em Abertura de Agenda após a primeira escala confirmada.</span></div></div>
+      <section className="table-card"><div className="table-head"><div><h2>Médicos ativos</h2><p>Confirme apenas as escalas já definidas para {competenciaLabel(target)}.</p></div><SearchBox/></div>
+      <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Escala atual</th><th>Nova competência</th><th>Ação</th></tr></thead><tbody>
+        {filtered.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.escalas.length?d.escalas.map(e=>`${e.dia_semana} ${e.inicio}-${e.fim}`).join(' · '):'Sem escala de referência'}</td><td>{competenciaLabel(target)}</td>
+        <td><button className="primary" disabled={!liberacao.liberado||jaExiste} onClick={()=>setFutureDoctor({doctor:d,competencia:target})}><CalendarPlus size={15}/>{jaExiste?'Já operacional':'Confirmar escala'}</button></td></tr>)}
+      </tbody></table></div></section></>
+  }
 
-        <nav>
-          <button className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePage('dashboard')}>
-            <LayoutDashboard size={18} />{sidebarOpen && 'Dashboard'}
-          </button>
-          <button className={`nav-item ${activePage === 'abertura' ? 'active' : ''}`} onClick={() => setActivePage('abertura')}>
-            <CalendarDays size={18} />{sidebarOpen && 'Abertura de Agenda'}
-          </button>
-          <button className={`nav-item ${activePage === 'respondidos' ? 'active' : ''}`} onClick={() => setActivePage('respondidos')}>
-            <MessageSquareText size={18} />{sidebarOpen && 'Respondidos'}
-          </button>
-          <button className={`nav-item ${activePage === 'medicos' ? 'active' : ''}`} onClick={() => setActivePage('medicos')}>
-            <Users size={18} />{sidebarOpen && 'Médicos'}
-          </button>
-          <button className={`nav-item ${activePage === 'configuracoes' ? 'active' : ''}`} onClick={() => setActivePage('configuracoes')}>
-            <Settings size={18} />{sidebarOpen && 'Configurações'}
-          </button>
-        </nav>
+  function renderConfig(){
+    return <div className="dashboard-grid"><section className="card"><h2>Operação atual</h2><dl><dt>Unidade</dt><dd>{unidade}</dd><dt>Competência</dt><dd>{competenciaLabel(competencia)}</dd><dt>Marco inicial</dt><dd>Outubro/2026</dd><dt>Regra de futuras agendas</dt><dd>Dia 15 → +2 meses</dd></dl></section>
+      <section className="card"><h2>Integrações</h2><dl><dt>Banco</dt><dd>Google Sheets via n8n</dd><dt>WhatsApp</dt><dd>Evolution API / CCNIT</dd><dt>Última leitura</dt><dd>{lastSync?lastSync.toLocaleString('pt-BR'):'—'}</dd></dl><button className="outline" onClick={()=>refreshData()}><RefreshCw size={15}/> Testar leitura</button></section>
+      <section className="card span-2"><h2>Feriados</h2><p>As datas cadastradas são removidas do cálculo automático antes da confirmação da escala.</p><div className="holiday-list">{FERIADOS.filter(f=>f.data.slice(0,4)>=competencia.slice(0,4)).slice(0,12).map(f=><span key={f.data}>{isoToBR(f.data)} · {f.nome}</span>)}</div></section></div>
+  }
 
-        {sidebarOpen && (
-          <div className="sidebar-foot">
-            <span>RC</span>
-            <strong>v0.7</strong>
-          </div>
-        )}
-      </aside>
+  const current=activePage==='dashboard'?renderDashboard():activePage==='abertura'?renderAbertura():activePage==='respondidos'?renderRespondidos():activePage==='medicos'?renderMedicos():activePage==='futuras'?renderFuturas():renderConfig()
 
-      <main className="main">
-        <header className="topbar">
-          <button className="icon-btn" onClick={() => setSidebarOpen(v => !v)}>
-            <Menu size={20} />
-          </button>
-          <div className="topbar-title">
-            <h1>{pageMeta[activePage].title}</h1>
-            <p>{pageMeta[activePage].subtitle}</p>
-          </div>
-          <button className="secondary-btn" onClick={refreshData} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''} /> Atualizar dados</button>
-        </header>
+  return <div className="app">
+    <aside className={sidebarOpen?'sidebar':'sidebar collapsed'}><div className="brand"><Stethoscope/>{sidebarOpen&&<strong>Abertura de Agenda</strong>}</div>
+      <nav>
+        <Nav id="dashboard" icon={<LayoutDashboard/>} label="Dashboard"/>
+        <Nav id="abertura" icon={<CalendarDays/>} label="Abertura de Agenda"/>
+        <Nav id="respondidos" icon={<MessageSquareText/>} label="Respondidos"/>
+        <Nav id="medicos" icon={<Users/>} label="Médicos"/>
+        <Nav id="futuras" icon={<CalendarPlus/>} label="Futuras Agendas"/>
+        <Nav id="configuracoes" icon={<Settings/>} label="Configurações"/>
+      </nav>{sidebarOpen&&<div className="version">RC v0.8</div>}</aside>
+    <main><header><button className="icon" onClick={()=>setSidebarOpen(v=>!v)}><Menu/></button><div><h1>{pageMeta[activePage][0]}</h1><p>{pageMeta[activePage][1]}</p></div></header>
+      <div className="content">{error&&<div className="alert error">{error}</div>}{success&&<div className="alert success">{success}</div>}{current}</div>
+    </main>
 
-        <section className="content">
-          {error && (
-            <div className="system-alert error-alert"><AlertTriangle size={18} /><span>{error}</span></div>
-          )}
-          {success && (
-            <div className="system-alert success-alert"><CheckCircle2 size={18} /><span>{success}</span></div>
-          )}
-          {renderCurrentPage()}
-        </section>
-      </main>
+    {selectedDoctor&&<Modal onClose={()=>setSelectedDoctor(null)}><h2>{selectedDoctor.status==='aguardando'?'Reenviar solicitação':'Enviar solicitação'}</h2><p>Enviar para <strong>{selectedDoctor.nome}</strong> referente a <strong>{competenciaLabel(competencia)}</strong>?</p><div className="modal-actions"><button className="outline" onClick={()=>setSelectedDoctor(null)}>Cancelar</button><button className="primary" disabled={sending} onClick={()=>enviar(selectedDoctor)}>{sending?<LoaderCircle className="spin"/>:<Send/>} Confirmar</button></div></Modal>}
+    {responseDoctor&&<Modal onClose={()=>setResponseDoctor(null)}><h2>Resposta recebida</h2><p><strong>{responseDoctor.nome}</strong></p><div className="response-box">{responseDoctor.resposta_recebida||'Resposta registrada sem texto.'}</div><p className="muted">{responseDoctor.respondido_em||''}</p></Modal>}
+    {doctorForm&&<DoctorModal form={doctorForm} setForm={setDoctorForm} onClose={()=>setDoctorForm(null)} onSave={salvarMedico}/>}
+    {futureDoctor&&<FutureModal data={futureDoctor} onClose={()=>setFutureDoctor(null)} onSave={confirmarEscala}/>}
+  </div>
 
-      {selectedDoctor && (
-        <Modal onClose={() => setSelectedDoctor(null)} wide>
-          <div className="modal-header">
-            <span className="eyebrow">Prévia do envio</span>
-            <h3>{selectedDoctor.nome}</h3>
-            <p>Revise os dados e a mensagem antes do disparo.</p>
-          </div>
-
-          <div className="preview-layout">
-            <div className="recipient-card">
-              <div className="recipient-row"><span>CD Médico</span><strong>{selectedDoctor.cd}</strong></div>
-              <div className="recipient-row"><span>Telefone</span><strong>{selectedDoctor.telefone}</strong></div>
-              <div className="recipient-row"><span>Unidade</span><strong>Niterói</strong></div>
-              <div className="recipient-row"><span>Competência</span><strong>Outubro/2026</strong></div>
-            </div>
-
-            <div className="whatsapp-preview">
-              <div className="wa-top">
-                <div className="avatar small">{selectedDoctor.nome.split(' ').slice(0,2).map(n => n[0]).join('')}</div>
-                <div><strong>{selectedDoctor.nomeCurto}</strong><span>WhatsApp</span></div>
-              </div>
-              <div className="wa-body">
-                <div className="wa-bubble">
-                  <pre>{gerarMensagem(selectedDoctor)}</pre>
-                  <span className="wa-time">prévia</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="test-safety-note">
-            <LockKeyhole size={16} />
-            <span>Revise médico, telefone, competência e mensagem antes de confirmar o envio.</span>
-          </div>
-
-          <div className="modal-actions">
-            <button className="ghost-btn" onClick={() => setSelectedDoctor(null)} disabled={sending}>Cancelar</button>
-            <button className="primary-btn big" onClick={confirmSend} disabled={sending}>
-              {sending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
-              {sending ? 'Enviando...' : 'Enviar mensagem'}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {previewDoctor && (
-        <Modal onClose={closePreview}>
-          <div className="modal-header">
-            <span className="eyebrow">Evidência da conversa</span>
-            <h3>{previewDoctor.nome}</h3>
-            <p>Posicione a conversa no trecho desejado e, quando estiver satisfeito com o enquadramento, baixe a evidência.</p>
-          </div>
-
-          <div className="preview-shell">
-            <div className="preview-stage">
-              {previewImage ? (
-                <img src={previewImage} alt={`Preview da conversa de ${previewDoctor.nome}`} />
-              ) : (
-                <div className="preview-placeholder">
-                  <LoaderCircle size={24} className="spin" />
-                  <span>Abrindo conversa...</span>
-                </div>
-              )}
-              {previewLoading && previewImage && (
-                <div className="preview-loading">
-                  <LoaderCircle size={22} className="spin" />
-                  <span>{previewAction || 'Atualizando preview...'}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="preview-controls">
-              <button className="ghost-btn" onClick={() => scrollPreview('cima', 'longo')} disabled={previewLoading}>
-                ↑↑ Subir bastante
-              </button>
-              <button className="ghost-btn" onClick={() => scrollPreview('cima', 'curto')} disabled={previewLoading}>
-                ↑ Subir
-              </button>
-              <button className="ghost-btn" onClick={() => scrollPreview('baixo', 'curto')} disabled={previewLoading}>
-                ↓ Descer
-              </button>
-              <button className="ghost-btn" onClick={() => scrollPreview('baixo', 'longo')} disabled={previewLoading}>
-                ↓↓ Descer bastante
-              </button>
-            </div>
-          </div>
-
-          <div className="modal-actions preview-actions">
-            <button className="ghost-btn" onClick={closePreview} disabled={previewLoading}>Fechar</button>
-            <button className="primary-btn" onClick={capturePreview} disabled={previewLoading || !previewImage}>
-              {previewLoading && previewAction.includes('Capturando')
-                ? <LoaderCircle size={16} className="spin" />
-                : <FileImage size={16} />}
-              Baixar evidência
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {responseDoctor && (
-        <Modal onClose={() => setResponseDoctor(null)}>
-          <div className="modal-header">
-            <span className="eyebrow">Resposta recebida</span>
-            <h3>{responseDoctor.nome}</h3>
-            <p>{responseDoctor.especialidade} · CD {responseDoctor.cd}</p>
-          </div>
-
-          <div className="response-card">
-            <div className="response-message">
-              <MessageSquareText size={18} />
-              <div>
-                <span>Mensagem do médico</span>
-                <p>{responseDoctor.respostaRecebida || 'Resposta registrada sem texto.'}</p>
-              </div>
-            </div>
-
-            <div className="response-meta">
-              <div>
-                <span>Respondido em</span>
-                <strong>{responseDoctor.respondeuEm || '—'}</strong>
-              </div>
-              <div>
-                <span>ID da mensagem</span>
-                <strong className="message-id">{responseDoctor.idMensagemResposta || '—'}</strong>
-              </div>
-              <div>
-                <span>Evidência</span>
-                <strong>{responseDoctor.evidenciaGerada || 'Não'}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-actions">
-            <button className="ghost-btn" onClick={() => setResponseDoctor(null)}>Fechar</button>
-          </div>
-        </Modal>
-      )}
-
-      {detailsDoctor && (
-        <Modal onClose={() => setDetailsDoctor(null)}>
-          <div className="modal-header">
-            <span className="eyebrow">Detalhes da escala</span>
-            <h3>{detailsDoctor.nome}</h3>
-            <p>{detailsDoctor.especialidade} · CD {detailsDoctor.cd}</p>
-          </div>
-          <div className="schedule-list">
-            {agruparEscalas(detailsDoctor.escalas).map((grupo) => (
-              <div className="schedule-day" key={grupo.label}>
-                <strong>{grupo.label}</strong>
-                {grupo.itens.map((e, i) => (
-                  <div className="schedule-line" key={i}>
-                    <span>{e.especialidade}</span>
-                    <b>{e.inicio} às {e.fim}</b>
-                    <span className="lunch-label">{e.almoco ? `Almoço: ${e.almoco}` : 'Sem almoço'}</span>
-                    {e.obs && <em>{e.obs}</em>}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="modal-actions">
-            <button className="ghost-btn" onClick={() => setDetailsDoctor(null)}>Fechar</button>
-            <button className="primary-btn" onClick={() => { setDetailsDoctor(null); setSelectedDoctor(detailsDoctor) }}>
-              <Send size={15} /> Preparar envio
-            </button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  )
+  function Nav({id,icon,label}) { return <button className={activePage===id?'nav active':'nav'} onClick={()=>setActivePage(id)}>{icon}{sidebarOpen&&label}</button> }
+  function SearchBox(){return <div className="search"><Search size={16}/><input placeholder="Buscar médico, especialidade ou CD..." value={query} onChange={e=>setQuery(e.target.value)}/></div>}
+  function State(){return <tr><td colSpan="6" className="empty"><LoaderCircle className="spin"/> Carregando dados...</td></tr>}
+  function Doctor({d}){return <div className="doctor"><span className="avatar">{String(d.nome||'?').split(' ').slice(0,2).map(x=>x[0]).join('')}</span><span><strong>{d.nome}</strong><small>CD {d.cd}</small></span></div>}
+  function Badge({status}){return <span className={`badge ${status}`}>{status==='respondido'?'Respondido':status==='aguardando'?'Aguardando resposta':'Não enviado'}</span>}
 }
 
-export default App
+function DoctorModal({form,setForm,onClose,onSave}) {
+  return <Modal onClose={onClose}><h2>{form.cd_medico?'Editar médico':'Adicionar médico'}</h2><div className="form-grid">
+    <label>CD Médico<input value={form.cd_medico} onChange={e=>setForm({...form,cd_medico:e.target.value})}/></label>
+    <label>Nome<input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})}/></label>
+    <label>Especialidade<input value={form.especialidade} onChange={e=>setForm({...form,especialidade:e.target.value})}/></label>
+    <label>Subespecialidade<input value={form.subespecialidade} onChange={e=>setForm({...form,subespecialidade:e.target.value})}/></label>
+    <label>Telefone<input value={form.telefone} onChange={e=>setForm({...form,telefone:e.target.value.replace(/\D/g,'')})}/></label>
+  </div><div className="modal-actions"><button className="outline" onClick={onClose}>Cancelar</button><button className="primary" onClick={()=>onSave(form)}><Save size={16}/> Salvar</button></div></Modal>
+}
+
+function FutureModal({data,onClose,onSave}) {
+  const d=data.doctor
+  const base=d.escalas[0]||{}
+  const [dia,setDia]=useState(base.dia_semana||'Segunda')
+  const [inicio,setInicio]=useState(base.inicio||'08:00')
+  const [fim,setFim]=useState(base.fim||'12:00')
+  const [almoco,setAlmoco]=useState(base.almoco||'Sem almoço')
+  const [especialidade,setEspecialidade]=useState(base.especialidade||d.especialidade||'')
+  const datas=datasPorDiaSemana(data.competencia,dia)
+  const [ano,mes]=data.competencia.split('-')
+  const origem=[]
+  for(let x=1;x<=31;x++){const dt=new Date(+ano,+mes-1,x);if(dt.getMonth()!==+mes-1)break;if(dt.getDay()===WEEKDAY[dia])origem.push(`${String(x).padStart(2,'0')}/${mes}`)}
+  const removidas=origem.filter(x=>!datas.includes(x))
+  return <Modal onClose={onClose}><h2>Confirmar escala futura</h2><p><strong>{d.nome}</strong> · {competenciaLabel(data.competencia)}</p>
+    <div className="form-grid"><label>Dia da semana<select value={dia} onChange={e=>setDia(e.target.value)}>{Object.keys(WEEKDAY).filter(x=>x!=='Domingo').map(x=><option key={x}>{x}</option>)}</select></label>
+    <label>Especialidade<input value={especialidade} onChange={e=>setEspecialidade(e.target.value)}/></label><label>Início<input type="time" value={inicio} onChange={e=>setInicio(e.target.value)}/></label>
+    <label>Fim<input type="time" value={fim} onChange={e=>setFim(e.target.value)}/></label><label>Almoço<input value={almoco} onChange={e=>setAlmoco(e.target.value)}/></label></div>
+    <div className="preview-dates"><strong>Datas calculadas</strong><span>{origem.join(', ')||'—'}</span><strong>Feriados removidos</strong><span>{removidas.join(', ')||'Nenhum'}</span><strong>Datas para solicitar</strong><span>{datas.join(', ')||'—'}</span></div>
+    <div className="modal-actions"><button className="outline" onClick={onClose}>Cancelar</button><button className="primary" onClick={()=>onSave({cd_medico:d.cd,nome:d.nome,unidade:d.unidade||'Niterói',competencia:data.competencia,dia_semana:dia,especialidade,inicio,fim,almoco,datas_origem:origem.join(', '),datas_solicitar:datas.join(', '),feriados_removidos:removidas.join(', ')})}><CheckCircle2 size={16}/> Confirmar escala</button></div>
+  </Modal>
+}
