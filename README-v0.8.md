@@ -1,28 +1,33 @@
-# Abertura de Agenda Médica — v0.8 RC1
+# Abertura de Agenda Médica — v0.8 RC1 CORRIGIDO
 
-## O que mudou
-- Novo menu **Futuras Agendas**.
-- Regra: a partir do dia 15, libera a preparação da competência de dois meses à frente.
-- Dashboard/Abertura usam competências dinâmicas.
-- Uma competência só deve aparecer após existir ao menos uma escala confirmada.
-- Marco histórico inicial: Outubro/2026.
-- Cadastro/edição/desativação de médicos pelo site.
-- Preparação de escala futura com cálculo de datas e exclusão de feriados.
-- Google Sheets continua sendo o banco; o site apenas facilita a operação.
+Este pacote substitui o pacote anterior.
 
-## IMPORTANTE — novos webhooks no n8n
-O frontend mantém os webhooks antigos e acrescenta:
-- GET `/webhook/agenda-competencias`
-- POST `/webhook/agenda-medico-salvar`
-- POST `/webhook/agenda-medico-status`
-- POST `/webhook/agenda-escala-confirmar`
+## Incluído
+- Frontend v0.8 com **Futuras Agendas**.
+- Dashboard e Abertura com competência dinâmica.
+- Marco histórico inicial em Outubro/2026.
+- Regra do dia 15: nova competência disponível dois meses à frente.
+- Competência só aparece operacionalmente quando existe ao menos uma escala confirmada.
+- Cadastro, edição e desativação de médicos pelo site.
+- Confirmação de escalas futuras com cálculo das datas e remoção de feriados.
+- Preview e evidências do WhatsApp preservados.
+- Google Sheets continua sendo o banco.
+- JSON n8n v0.8 incluído com os novos endpoints.
 
-Esses quatro endpoints precisam ser adicionados ao workflow do n8n para que as novas gravações funcionem.
-Os endpoints antigos de leitura/envio permanecem iguais.
+## JSON n8n
+Importe o arquivo:
+`API - Abertura de Agenda Medica v0.8 RC1 - CCNIT.json`
 
-## Implantação manual
-1. Faça backup do repositório atual.
-2. Substitua `src/App.jsx`, `src/styles.css`, `src/main.jsx`, `package.json`, `index.html` e `vite.config.js`.
-3. Na pasta `api`, mantenha os endpoints de preview/evidência que já existem no repositório e acrescente/substitua os arquivos incluídos neste pacote.
-4. Importe/implemente os quatro novos webhooks no n8n.
-5. Faça commit no GitHub; o Vercel deve redeployar automaticamente.
+Ele preserva o workflow CCNIT atual e adiciona:
+- GET `agenda-competencias`
+- POST `agenda-medico-salvar`
+- POST `agenda-medico-status`
+- POST `agenda-escala-confirmar`
+
+## Implantação
+1. Faça backup do workflow atual do n8n e do repositório.
+2. Importe o JSON v0.8 como um NOVO workflow primeiro para testar.
+3. Confira se a credencial `Google Sheets account` está vinculada nos novos nós.
+4. Ative o workflow v0.8 somente após validar os webhooks.
+5. Substitua os arquivos do repositório pelo conteúdo deste pacote.
+6. Aguarde o redeploy do Vercel.
