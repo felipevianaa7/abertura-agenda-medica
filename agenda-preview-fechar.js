@@ -1,0 +1,2 @@
+import { n8nUrl } from './_proxy.js'
+export async function POST(request){const body=await request.json().catch(()=>({}));const cd=String(body.cd_medico||'').trim();if(!cd)return Response.json({ok:false,erro:'CD_MEDICO_NAO_INFORMADO'},{status:400});const upstream=await fetch(n8nUrl('/webhook/agenda-preview-fechar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:cd})});const data=await upstream.json().catch(()=>({}));return Response.json(data,{status:upstream.status})}

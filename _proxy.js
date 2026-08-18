@@ -1,0 +1,3 @@
+const DEFAULT_N8N_BASE_URL='https://n8n.bibliaxp.store'
+export function n8nUrl(path){const base=(process.env.N8N_BASE_URL||DEFAULT_N8N_BASE_URL).replace(/\/$/,'');return `${base}${path}`}
+export async function proxyJson(request,targetUrl,init={}){const response=await fetch(targetUrl,{...init,headers:{'Content-Type':'application/json',...(init.headers||{})}});const text=await response.text();let data;try{data=text?JSON.parse(text):{}}catch{data={ok:false,error:text||'Resposta inválida do n8n.'}}return new Response(JSON.stringify(data),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8'}})}
