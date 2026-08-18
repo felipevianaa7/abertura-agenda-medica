@@ -129,13 +129,21 @@ export default function App() {
   const [futureDoctor,setFutureDoctor] = useState(null)
   const [sending,setSending] = useState(false)
   const [lastSync,setLastSync] = useState(null)
+  const [previewDoctor,setPreviewDoctor] = useState(null)
+  const [previewImage,setPreviewImage] = useState('')
+  const [previewLoading,setPreviewLoading] = useState(false)
+  const [previewAction,setPreviewAction] = useState('')
+  const [evidenceLoadingCd,setEvidenceLoadingCd] = useState('')
+  const [futureEscalas,setFutureEscalas] = useState([])
 
-  const doctors = useMemo(()=>montarDoctors(medicosBase,escalas,solicitacoes),[medicosBase,escalas,solicitacoes])
+  const allDoctors = useMemo(()=>montarDoctors(medicosBase,escalas,solicitacoes),[medicosBase,escalas,solicitacoes])
+  const doctors = useMemo(()=>allDoctors.filter(d=>d.escalas.length>0),[allDoctors])
+  const listSource = activePage==='medicos' || activePage==='futuras' ? allDoctors : doctors
   const filtered = useMemo(()=>{
     const q=query.toLowerCase().trim()
-    if(!q) return doctors
-    return doctors.filter(d=>[d.nome,d.especialidade,d.cd].some(v=>String(v||'').toLowerCase().includes(q)))
-  },[doctors,query])
+    if(!q) return listSource
+    return listSource.filter(d=>[d.nome,d.especialidade,d.cd].some(v=>String(v||'').toLowerCase().includes(q)))
+  },[listSource,query])
   const counters = useMemo(()=>({
     total:doctors.length,
     enviados:doctors.filter(d=>d.status!=='nao_enviado').length,
@@ -218,8 +226,77 @@ export default function App() {
       setSuccess(`Escala confirmada para ${competenciaLabel(payload.competencia)}.`)
       setFutureDoctor(null)
       await carregarCompetencias()
+      await carregarEscalasFuturas(payload.competencia)
       if(payload.competencia===competencia) await refreshData()
     } catch(e){setError(e.message)}
+  }
+
+
+  async function carregarEscalasFuturas(comp=liberacao.competencia) {
+    try {
+      const r = await fetch(`/api/agenda-escalas?unidade=${encodeURIComponent(unidade)}&competencia=${encodeURIComponent(comp)}`)
+      const j = await r.json().catch(()=>({}))
+      setFutureEscalas(r.ok ? (j.escalas||[]) : [])
+    } catch {
+      setFutureEscalas([])
+    }
+  }
+
+  useEffect(()=>{ carregarEscalasFuturas(liberacao.competencia) },[unidade,liberacao.competencia])
+
+  async function openPreview(doc) {
+    if (!doc || previewLoading) return
+    setPreviewDoctor(doc); setPreviewLoading(true); setPreviewAction('Abrindo conversa...'); setError('')
+    try {
+      const r = await fetch('/api/agenda-preview-iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:doc.cd})})
+      const j = await r.json().catch(()=>({}))
+      if(!r.ok || !j.ok || !j.preview_url) throw new Error(j.mensagem||j.error||'Não foi possível abrir o preview.')
+      setPreviewImage(`${j.preview_url}${j.preview_url.includes('?')?'&':'?'}t=${Date.now()}`)
+    } catch(e) {
+      setPreviewDoctor(null); setError(e.message||'Não foi possível abrir o preview.')
+    } finally { setPreviewLoading(false); setPreviewAction('') }
+  }
+
+  async function scrollPreview(direcao,intensidade='curto') {
+    if(!previewDoctor || previewLoading) return
+    setPreviewLoading(true); setPreviewAction(direcao==='cima'?'Subindo conversa...':'Descendo conversa...')
+    try{
+      const r=await fetch('/api/agenda-preview-rolar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:previewDoctor.cd,direcao,intensidade})})
+      const j=await r.json().catch(()=>({}))
+      if(!r.ok||!j.ok||!j.preview_url) throw new Error(j.mensagem||j.error||'Não foi possível atualizar o preview.')
+      setPreviewImage(`${j.preview_url}${j.preview_url.includes('?')?'&':'?'}t=${Date.now()}`)
+    }catch(e){setError(e.message)}finally{setPreviewLoading(false);setPreviewAction('')}
+  }
+
+  async function capturePreview() {
+    if(!previewDoctor || previewLoading) return
+    setPreviewLoading(true); setPreviewAction('Capturando trecho...')
+    try{
+      const r=await fetch('/api/agenda-preview-capturar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:previewDoctor.cd})})
+      if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.mensagem||j.error||'Não foi possível capturar o trecho.')}
+      const blob=await r.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a')
+      a.href=url;a.download=`evidencia-trecho-${previewDoctor.cd}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)
+      setSuccess('Trecho capturado com sucesso.')
+    }catch(e){setError(e.message)}finally{setPreviewLoading(false);setPreviewAction('')}
+  }
+
+  async function closePreview() {
+    const doc=previewDoctor
+    setPreviewDoctor(null);setPreviewImage('');setPreviewLoading(false);setPreviewAction('')
+    if(!doc) return
+    fetch('/api/agenda-preview-fechar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:doc.cd})}).catch(()=>{})
+  }
+
+  async function downloadEvidence(doc) {
+    if(!doc || evidenceLoadingCd) return
+    setEvidenceLoadingCd(doc.cd); setError('')
+    try{
+      const r=await fetch('/api/agenda-evidencia-teste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cd_medico:doc.cd})})
+      if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.mensagem||j.error||'Não foi possível gerar a evidência.')}
+      const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a')
+      a.href=url;a.download=`evidencia-whatsapp-${doc.cd}-${competencia}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)
+      setSuccess(`Evidência de ${doc.nome} gerada.`)
+    }catch(e){setError(e.message)}finally{setEvidenceLoadingCd('')}
   }
 
   const pageMeta={
@@ -263,7 +340,10 @@ export default function App() {
         <tbody>{loading?<State/>:filtered.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.escalas.length?d.escalas.map(e=>e.dia_semana).join(' / '):'—'}</td><td><Badge status={d.status}/></td><td>{d.ultimo_reenvio||d.enviado_em||'—'}</td><td><div className="actions">
           {d.status==='nao_enviado'&&<button className="primary" onClick={()=>setSelectedDoctor(d)}><Send size={15}/> Enviar</button>}
           {d.status==='aguardando'&&<button className="outline" onClick={()=>setSelectedDoctor(d)}><RotateCcw size={15}/> Reenviar</button>}
-          {d.status==='respondido'&&<button className="outline" onClick={()=>setResponseDoctor(d)}><MessageSquareText size={15}/> Ver resposta</button>}
+          {d.status==='respondido'&&<>
+            <button className="outline" onClick={()=>setResponseDoctor(d)}><MessageSquareText size={15}/> Ver resposta</button>
+            <button className="outline" onClick={()=>openPreview(d)} disabled={previewLoading}><FileImage size={15}/> Evidência</button>
+          </>}
         </div></td></tr>)}</tbody></table></div>
       </section></>
   }
@@ -272,7 +352,7 @@ export default function App() {
     const lista=doctors.filter(d=>d.status==='respondido')
     return <><Filters/><section className="table-card"><div className="table-head"><div><h2>Respostas recebidas</h2><p>{competenciaLabel(competencia)} · {unidade}</p></div></div>
       <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Respondido em</th><th>Resposta</th></tr></thead><tbody>
-      {lista.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.respondido_em||'—'}</td><td><button className="outline" onClick={()=>setResponseDoctor(d)}>Ver resposta</button></td></tr>)}
+      {lista.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.respondido_em||'—'}</td><td><div className="actions"><button className="outline" onClick={()=>setResponseDoctor(d)}>Ver resposta</button><button className="outline" onClick={()=>openPreview(d)}><FileImage size={15}/> Evidência</button></div></td></tr>)}
       {!lista.length&&!loading&&<tr><td colSpan="4" className="empty">Nenhuma resposta nesta competência.</td></tr>}
       </tbody></table></div></section></>
   }
@@ -291,15 +371,15 @@ export default function App() {
 
   function renderFuturas(){
     const target=liberacao.competencia
-    const jaExiste=competencias.includes(target)
+    const totalPreparadas = new Set(futureEscalas.map(e=>String(e.cd_medico))).size
     return <><div className="future-hero"><div><span className="eyebrow">Próxima competência</span><h2>{competenciaLabel(target)}</h2>
       <p>{liberacao.liberado?'Competência liberada para preparação.':'Ainda bloqueada pela regra operacional.'}</p></div>
       <div className={`unlock ${liberacao.liberado?'open':'locked'}`}>{liberacao.liberado?<CalendarPlus/>:<LockKeyhole/>}<strong>{liberacao.liberado?'Liberado':'Libera em '+liberacao.data}</strong></div></div>
       <div className="notice"><AlertTriangle/><div><strong>Regra operacional</strong><span>A partir do dia 15 de cada mês, libera-se a preparação da agenda de dois meses à frente. A competência só aparece no Dashboard e em Abertura de Agenda após a primeira escala confirmada.</span></div></div>
-      <section className="table-card"><div className="table-head"><div><h2>Médicos ativos</h2><p>Confirme apenas as escalas já definidas para {competenciaLabel(target)}.</p></div><SearchBox/></div>
+      <section className="table-card"><div className="table-head"><div><h2>Médicos ativos</h2><p>Confirme apenas as escalas já definidas para {competenciaLabel(target)}. {totalPreparadas} médico(s) já possuem escala preparada.</p></div><SearchBox/></div>
       <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Escala atual</th><th>Nova competência</th><th>Ação</th></tr></thead><tbody>
         {filtered.map(d=><tr key={d.cd}><td><Doctor d={d}/></td><td>{d.especialidade}</td><td>{d.escalas.length?d.escalas.map(e=>`${e.dia_semana} ${e.inicio}-${e.fim}`).join(' · '):'Sem escala de referência'}</td><td>{competenciaLabel(target)}</td>
-        <td><button className="primary" disabled={!liberacao.liberado||jaExiste} onClick={()=>setFutureDoctor({doctor:d,competencia:target})}><CalendarPlus size={15}/>{jaExiste?'Já operacional':'Confirmar escala'}</button></td></tr>)}
+        <td><button className="primary" disabled={!liberacao.liberado} onClick={()=>setFutureDoctor({doctor:d,competencia:target})}><CalendarPlus size={15}/>{futureEscalas.some(e=>String(e.cd_medico)===d.cd)?'Adicionar/ajustar escala':'Confirmar escala'}</button></td></tr>)}
       </tbody></table></div></section></>
   }
 
@@ -329,6 +409,11 @@ export default function App() {
     {responseDoctor&&<Modal onClose={()=>setResponseDoctor(null)}><h2>Resposta recebida</h2><p><strong>{responseDoctor.nome}</strong></p><div className="response-box">{responseDoctor.resposta_recebida||'Resposta registrada sem texto.'}</div><p className="muted">{responseDoctor.respondido_em||''}</p></Modal>}
     {doctorForm&&<DoctorModal form={doctorForm} setForm={setDoctorForm} onClose={()=>setDoctorForm(null)} onSave={salvarMedico}/>}
     {futureDoctor&&<FutureModal data={futureDoctor} onClose={()=>setFutureDoctor(null)} onSave={confirmarEscala}/>}
+    {previewDoctor&&<div className="modal-backdrop" onMouseDown={closePreview}><div className="preview-modal" onMouseDown={e=>e.stopPropagation()}>
+      <div className="preview-head"><div><strong>{previewDoctor.nome}</strong><span>Conversa do WhatsApp · evidência</span></div><button className="modal-x" onClick={closePreview}><X size={18}/></button></div>
+      <div className="preview-body">{previewLoading&&<div className="preview-loading"><LoaderCircle className="spin"/>{previewAction||'Carregando...'}</div>}{previewImage&&<img src={previewImage} alt="Preview da conversa"/>}</div>
+      <div className="preview-actions"><button className="outline" onClick={()=>scrollPreview('cima','longo')}>↑ Subir</button><button className="outline" onClick={()=>scrollPreview('baixo','longo')}>↓ Descer</button><button className="outline" onClick={capturePreview}><FileImage size={15}/> Capturar trecho</button><button className="primary" onClick={()=>downloadEvidence(previewDoctor)} disabled={!!evidenceLoadingCd}><FileImage size={15}/> Evidência completa</button></div>
+    </div></div>}
   </div>
 
   function Nav({id,icon,label}) { return <button className={activePage===id?'nav active':'nav'} onClick={()=>setActivePage(id)}>{icon}{sidebarOpen&&label}</button> }
