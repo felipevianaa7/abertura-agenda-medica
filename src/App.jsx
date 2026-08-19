@@ -327,7 +327,7 @@ export default function App(){
   function renderMedicos(){
     return <section className="table-card"><div className="table-head"><div><h2>Cadastro de médicos — {unidade}</h2><p>Cadastre, edite, ative/desative e mantenha a escala fixa sem abrir a planilha.</p></div><div className="head-actions"><SearchBox query={query} setQuery={setQuery}/><button className="primary" onClick={()=>setDoctorForm(blankDoctor(unidade))}><Plus size={15}/> Adicionar médico</button></div></div>
       <div className="table-wrap"><table><thead><tr><th>Médico</th><th>Especialidade</th><th>Telefone</th><th>Escala fixa</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
-        {filteredAll.map(d=>{const fx=fixedEscalas.filter(e=>String(e.cd_medico)===String(d.cd_medico));const ativo=String(d.ativo||'Sim').toLowerCase()==='sim';return <tr key={d.cd_medico}><td><DoctorCell d={d}/></td><td>{d.especialidade}</td><td><span className="phone"><Phone size={14}/>{d.telefone}</span></td><td>{fx.length?<button className="link-btn" onClick={()=>setFixedDoctor(d)}>{fx.length} turno(s) <ChevronRight size={15}/></button>:<button className="link-btn warn" onClick={()=>setFixedDoctor(d)}>Cadastrar escala <ChevronRight size={15}/></button>}</td><td><span className={`status-line ${ativo?'ok':'off'}`}>{ativo?<UserRoundCheck size={15}/>:<CircleOff size={15}/>} {ativo?'Ativo':'Inativo'}</span></td><td><div className="actions">
+        {filteredAll.map(d=>{const fx=fixedEscalas.filter(e=>String(e.cd_medico)===String(d.cd_medico));const atuais=escalas.filter(e=>String(e.cd_medico)===String(d.cd_medico));const sig=x=>[x.dia_semana,x.inicio,x.fim,x.especialidade||d.especialidade].map(v=>String(v||'').trim().toLowerCase()).join('|');const fxSig=new Set(fx.map(sig));const atuaisNaoFixas=atuais.filter(e=>!fxSig.has(sig(e)));const ativo=String(d.ativo||'Sim').toLowerCase()==='sim';const escalaResumo=fx.length&&atuaisNaoFixas.length?`${fx.length} fixa(s) · ${atuaisNaoFixas.length} atual(is)`:fx.length?`${fx.length} escala(s) fixa(s)`:atuais.length?`${atuais.length} turno(s) atual(is)`:'Cadastrar escala';return <tr key={d.cd_medico}><td><DoctorCell d={d}/></td><td>{d.especialidade}</td><td><span className="phone"><Phone size={14}/>{d.telefone}</span></td><td><button className={`link-btn ${!fx.length&&!atuais.length?'warn':''}`} onClick={()=>setFixedDoctor(d)}>{escalaResumo} <ChevronRight size={15}/></button></td><td><span className={`status-line ${ativo?'ok':'off'}`}>{ativo?<UserRoundCheck size={15}/>:<CircleOff size={15}/>} {ativo?'Ativo':'Inativo'}</span></td><td><div className="actions">
           <button className="outline" onClick={()=>setDoctorForm({...d})}><Pencil size={15}/> Editar</button>
           <button className="outline" onClick={()=>setFixedDoctor(d)}><CalendarDays size={15}/> Escala fixa</button>
           <button className={ativo?'danger':'success-btn'} onClick={()=>toggleDoctor(d)}>{ativo?<UserX size={15}/>:<UserCheck size={15}/>} {ativo?'Desativar':'Ativar'}</button>
@@ -395,7 +395,7 @@ export default function App(){
   {selectedDoctor&&<Modal onClose={()=>setSelectedDoctor(null)}><h2>{selectedDoctor.status==='aguardando'?'Reenviar solicitação':'Enviar solicitação'}</h2><p>Enviar a solicitação de <strong>{labelCompetencia(competencia)}</strong> para <strong>{selectedDoctor.nome}</strong>?</p><div className="modal-actions"><button className="outline" onClick={()=>setSelectedDoctor(null)}>Cancelar</button><button className="primary" disabled={sending} onClick={()=>sendDoctor(selectedDoctor)}>{sending?<LoaderCircle className="spin" size={16}/>:<Send size={16}/>} Confirmar</button></div></Modal>}
   {responseDoctor&&<Modal onClose={()=>setResponseDoctor(null)}><h2>Resposta recebida</h2><p><strong>{responseDoctor.nome}</strong> · {labelCompetencia(competencia)}</p><div className="response-box">{responseDoctor.sol.resposta_recebida||'Resposta registrada sem texto.'}</div><p className="muted">{responseDoctor.sol.respondido_em||''}</p></Modal>}
   {doctorForm&&<DoctorModal form={doctorForm} onClose={()=>setDoctorForm(null)} onSave={saveDoctor}/>}
-  {fixedDoctor&&<FixedScheduleModal doctor={fixedDoctor} rows={fixedEscalas.filter(e=>String(e.cd_medico)===String(fixedDoctor.cd_medico))} unidade={unidade} onClose={()=>setFixedDoctor(null)} onSave={saveFixed} onRemove={removeFixed}/>}
+  {fixedDoctor&&<FixedScheduleModal doctor={fixedDoctor} rows={fixedEscalas.filter(e=>String(e.cd_medico)===String(fixedDoctor.cd_medico))} currentRows={escalas.filter(e=>String(e.cd_medico)===String(fixedDoctor.cd_medico))} competencia={competencia} unidade={unidade} onClose={()=>setFixedDoctor(null)} onSave={saveFixed} onRemove={removeFixed}/>}
   {futureDoctor&&<PrepareFutureModal doctor={futureDoctor.doc} comp={futureDoctor.comp} fixedRows={fixedEscalas.filter(e=>String(e.cd_medico)===String(futureDoctor.doc.cd_medico))} existing={futureDoctor.existing||[]} onClose={()=>setFutureDoctor(null)} onConfirm={confirmFuture}/>}
   {previewDoctor&&<PreviewModal doctor={previewDoctor} image={previewImage} loading={previewLoading} action={previewAction} onClose={closePreview} onScroll={scrollPreview} onCapture={capturePreview}/>}
   </div>
@@ -424,25 +424,44 @@ function DoctorModal({form,onClose,onSave}){
   </div><div className="modal-actions"><button className="outline" onClick={onClose}>Cancelar</button><button className="primary" onClick={()=>onSave(f)}><Save size={16}/> Salvar</button></div></Modal>
 }
 
-function FixedScheduleModal({doctor,rows,unidade,onClose,onSave,onRemove}){
+function FixedScheduleModal({doctor,rows,currentRows=[],competencia,unidade,onClose,onSave,onRemove}){
   const blank=()=>({id_escala:'',dia_semana:'Segunda',especialidade:doctor.especialidade||'',inicio:'08:00',fim:'12:00',almoco:'Sem almoço',observacao:''})
   const [editing,setEditing]=useState(null)
-  return <Modal onClose={onClose} wide><h2>Escala fixa — {doctor.nome}</h2><p>Esses turnos servem como base para preparar os meses futuros. Eles ficam na aba <strong>Escalas</strong> com competência <strong>FIXA</strong>.</p>
-    <div className="fixed-list">{rows.length?rows.map(r=><div className="fixed-row" key={r.datas_origem}><div><strong>{r.dia_semana}</strong><span>{r.inicio} às {r.fim} · {r.especialidade||doctor.especialidade}</span><small>{r.almoco||'Sem almoço'}</small></div><div className="actions"><button className="outline" onClick={()=>setEditing({id_escala:r.datas_origem,dia_semana:r.dia_semana,especialidade:r.especialidade||doctor.especialidade,inicio:r.inicio,fim:r.fim,almoco:r.almoco||'Sem almoço',observacao:r.observacao||''})}><Pencil size={14}/> Editar</button><button className="danger" onClick={()=>onRemove(r)}><Trash2 size={14}/> Remover</button></div></div>):<div className="empty-box">Nenhuma escala fixa cadastrada.</div>}</div>
-    <button className="primary add-fixed" onClick={()=>setEditing(blank())}><Plus size={15}/> Adicionar turno fixo</button>
-    {editing&&<FixedForm value={editing} doctor={doctor} unidade={unidade} onCancel={()=>setEditing(null)} onSave={async x=>{const ok=await onSave({...x,cd_medico:doctor.cd_medico,nome:doctor.nome,unidade});if(ok)setEditing(null)}}/>}
+  const signature=r=>[r.dia_semana,r.inicio,r.fim,r.especialidade||doctor.especialidade].map(v=>String(v||'').trim().toLowerCase()).join('|')
+  const fixedSignatures=new Set(rows.map(signature))
+  const baseRows=currentRows.filter(r=>r.dia_semana&&r.inicio&&r.fim&&!fixedSignatures.has(signature(r)))
+  const displayed=[
+    ...rows.map(r=>({...r,_source:'fixed'})),
+    ...baseRows.map(r=>({...r,_source:'current'})),
+  ]
+  const editRow=r=>setEditing({
+    id_escala:r._source==='fixed'?r.datas_origem:'',
+    dia_semana:r.dia_semana,
+    especialidade:r.especialidade||doctor.especialidade,
+    inicio:r.inicio,
+    fim:r.fim,
+    almoco:r.almoco||'Sem almoço',
+    observacao:r.observacao||'',
+    _source:r._source,
+  })
+  return <Modal onClose={onClose} wide><h2>Escala fixa — {doctor.nome}</h2>
+    <p>Esses turnos servem como base para preparar os meses futuros. As escalas fixas ficam na aba <strong>Escalas</strong> com competência <strong>FIXA</strong>.</p>
+    {!!baseRows.length&&<div className="notice"><CalendarDays size={17}/><div><strong>Escala atual encontrada em {labelCompetencia(competencia)}</strong><span>Os turnos marcados como “Base atual” já existem na competência atual. Ao editar e salvar um deles, o sistema cria uma nova linha como escala FIXA, sem alterar a agenda de {labelCompetencia(competencia)}.</span></div></div>}
+    <div className="fixed-list">{displayed.length?displayed.map((r,i)=><div className="fixed-row" key={`${r._source}-${r.datas_origem||signature(r)}-${i}`}><div><div className="actions"><strong>{r.dia_semana}</strong><span className={`badge ${r._source==='fixed'?'respondido':'aguardando'}`}>{r._source==='fixed'?'Escala fixa':`Base ${labelCompetencia(competencia)}`}</span></div><span>{r.inicio} às {r.fim} · {r.especialidade||doctor.especialidade}</span><small>{r.almoco||'Sem almoço'}{r.observacao?` · ${r.observacao}`:''}</small></div><div className="actions"><button className="outline" onClick={()=>editRow(r)}><Pencil size={14}/> {r._source==='fixed'?'Editar':'Usar / editar'}</button>{r._source==='fixed'&&<button className="danger" onClick={()=>onRemove(r)}><Trash2 size={14}/> Remover</button>}</div></div>):<div className="empty-box">Nenhuma escala encontrada para este médico. Adicione o primeiro turno fixo abaixo.</div>}</div>
+    <button className="primary add-fixed" onClick={()=>setEditing(blank())}><Plus size={15}/> Adicionar novo turno</button>
+    {editing&&<FixedForm value={editing} doctor={doctor} unidade={unidade} onCancel={()=>setEditing(null)} onSave={async x=>{const {_source,...payload}=x;const ok=await onSave({...payload,cd_medico:doctor.cd_medico,nome:doctor.nome,unidade});if(ok)setEditing(null)}}/>}
   </Modal>
 }
 function FixedForm({value,onCancel,onSave}){
   const [f,setF]=useState({...value})
-  return <div className="fixed-editor"><h3>{f.id_escala?'Editar turno':'Novo turno'}</h3><div className="form-grid">
+  return <div className="fixed-editor"><h3>{f.id_escala?'Editar turno':f._source==='current'?'Criar escala fixa a partir do turno atual':'Novo turno'}</h3><div className="form-grid">
     <label>Dia da semana<select value={f.dia_semana} onChange={e=>setF({...f,dia_semana:e.target.value})}>{DIAS.map(d=><option key={d}>{d}</option>)}</select></label>
     <label>Especialidade<input value={f.especialidade} onChange={e=>setF({...f,especialidade:e.target.value})}/></label>
     <label>Início<input type="time" value={f.inicio} onChange={e=>setF({...f,inicio:e.target.value})}/></label>
     <label>Fim<input type="time" value={f.fim} onChange={e=>setF({...f,fim:e.target.value})}/></label>
     <label>Almoço<input value={f.almoco} onChange={e=>setF({...f,almoco:e.target.value})}/></label>
     <label>Observação<input value={f.observacao} onChange={e=>setF({...f,observacao:e.target.value})}/></label>
-  </div><div className="modal-actions"><button className="outline" onClick={onCancel}>Cancelar</button><button className="primary" onClick={()=>onSave(f)}><Save size={15}/> Salvar turno</button></div></div>
+  </div><div className="modal-actions"><button className="outline" onClick={onCancel}>Cancelar</button><button className="primary" onClick={()=>onSave(f)}><Save size={15}/> {f._source==='current'?'Salvar como escala fixa':'Salvar turno'}</button></div></div>
 }
 
 function PrepareFutureModal({doctor,comp,fixedRows,existing,onClose,onConfirm}){
